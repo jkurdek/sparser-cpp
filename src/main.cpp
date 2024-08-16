@@ -1,7 +1,6 @@
-#include <cstdlib>
-#include <iostream>
 #include <rapidjson/document.h>
 
-int main() {
-  return EXIT_SUCCESS;
-}
+#include <cstdlib>
+#include <iostream>
+
+int main() { return EXIT_SUCCESS; }
