@@ -18,9 +18,6 @@ jobs:
     - name: Install dependencies
       run: sudo apt-get update && sudo apt-get install -y build-essential cmake ninja-build
 
-    - name: Set VCPKG_ROOT
-      run: echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
-
     - name: Add Ninja to PATH
       run: echo "/usr/local/bin/ninja" >> $GITHUB_PATH
 
@@ -32,6 +29,9 @@ jobs:
         triplet: x64-linux-release
         token: ${{ github.token }}
         github-binarycache: true
+        
+    - name: Set VCPKG_ROOT
+      run: echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
 
     - name: Configure CMake
       run: cmake --preset=default   
