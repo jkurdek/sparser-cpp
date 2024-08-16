@@ -30,8 +30,6 @@ jobs:
       uses: lukka/run-cmake@v10
       with:
         configurePreset: 'linux-x64'
-        buildPreset: 'linux-x64'
-        testPreset: 'linux-x64'
 
     - name: Build
       # Build your program with the given configuration
