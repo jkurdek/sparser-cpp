@@ -14,6 +14,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y build-essential cmake
+      
     - name: vcpkg build
       id: vcpkg
       uses: johnwason/vcpkg-action@v6
