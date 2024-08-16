@@ -9,8 +9,10 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
 
     steps:
     - uses: actions/checkout@v4
@@ -26,9 +28,6 @@ jobs:
         triplet: x64-linux-release
         token: ${{ github.token }}
         github-binarycache: true
-        
-    - name: Set VCPKG_ROOT
-      run: echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
 
     - name: Configure CMake
       run: cmake --preset=default   
