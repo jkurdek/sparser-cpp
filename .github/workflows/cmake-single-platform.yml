@@ -14,7 +14,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - uses: johnwason/vcpkg-action@v6
+    - name: vcpkg build
+      id: vcpkg
+      uses: johnwason/vcpkg-action@v6
+      with:
+        manifest-dir: ${{ github.workspace }}
+        triplet: arm64-linux-release
+        token: ${{ github.token }}
+        github-binarycache: true
+        
 
     - name: Configure CMake
       run: cmake --preset=default   
