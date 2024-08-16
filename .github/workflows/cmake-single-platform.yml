@@ -18,6 +18,12 @@ jobs:
     - name: Install dependencies
       run: sudo apt-get update && sudo apt-get install -y build-essential cmake ninja-build
 
+    - name: Set VCPKG_ROOT
+      run: echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+
+    - name: Add Ninja to PATH
+      run: echo "/usr/local/bin/ninja" >> $GITHUB_PATH
+
     - name: vcpkg build
       id: vcpkg
       uses: johnwason/vcpkg-action@v6
