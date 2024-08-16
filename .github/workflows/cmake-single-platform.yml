@@ -20,14 +20,11 @@ jobs:
     - name: Set up CMake
       uses: lukka/get-cmake@latest
 
-    - name: vcpkg build
-      id: vcpkg
-      uses: johnwason/vcpkg-action@v6
+    - name: Restore from cache and install vcpkg
+      uses: lukka/run-vcpkg@v11
       with:
-        manifest-dir: ${{ github.workspace }}
-        triplet: x64-linux-release
-        token: ${{ github.token }}
-        github-binarycache: true
+        vcpkgGitCommitId: 73964f854d0d6424f335e9515b61b3a2dad5e15b
+        vcpkgJsonGlob: '**/vcpkg.json'
 
     - name: Configure CMake
       run: cmake  -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-linux-release -DVCPKG_MANIFEST_MODE=ON -S ${{github.workspace}} -B ${{github.workspace}}/build
