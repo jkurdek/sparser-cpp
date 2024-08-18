@@ -32,6 +32,14 @@
         "CMAKE_SYSTEM_NAME": "Linux",
         "VCPKG_TARGET_TRIPLET": "x64-linux"
       }
+    },
+    {
+      "name": "macos-arm-debug",
+      "inherits": "macos-arm",
+      "description": "Debug preset for ARM macOS",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     }
   ]
 }
