@@ -12,6 +12,10 @@
         "CMAKE_EXPORT_COMPILE_COMMANDS": {
           "value": "YES",
           "type": "BOOL"
+        },
+        "ENABLE_CLANG_TIDY": {
+          "value": "ON",
+          "type": "BOOL"
         }
       },
       "binaryDir": "${sourceDir}/build"
@@ -33,7 +37,11 @@
       "generator": "Ninja",
       "cacheVariables": {
         "CMAKE_SYSTEM_NAME": "Linux",
-        "VCPKG_TARGET_TRIPLET": "x64-linux"
+        "VCPKG_TARGET_TRIPLET": "x64-linux",
+        "ENABLE_CLANG_TIDY": {
+          "value": "OFF",
+          "type": "BOOL"
+        }
       }
     },
     {
