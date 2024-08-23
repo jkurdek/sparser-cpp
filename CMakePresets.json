@@ -8,10 +8,13 @@
         "CMAKE_TOOLCHAIN_FILE": {
           "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
           "type": "FILEPATH"
+        },
+        "CMAKE_EXPORT_COMPILE_COMMANDS": {
+          "value": "YES",
+          "type": "BOOL"
         }
       },
       "binaryDir": "${sourceDir}/build"
-      
     },
     {
       "name": "macos-arm",
