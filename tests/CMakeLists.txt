@@ -1,8 +1,8 @@
-add_executable(sample_test sample_test.cpp)
+add_executable(sparser_test sparser_test.cpp)
 
-target_link_libraries(sample_test PRIVATE GTest::gtest_main)
-target_include_directories(sample_test PRIVATE ${rapidjson_INCLUDE_DIRS})
+target_link_libraries(sparser_test PRIVATE GTest::gtest_main SparserCpp)
+target_include_directories(sparser_test PRIVATE SparserCpp ${CMAKE_SOURCE_DIR}/include)
 
 
 include(GoogleTest)
-gtest_discover_tests(sample_test)
+gtest_discover_tests(sparser_test)
