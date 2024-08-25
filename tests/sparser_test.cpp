@@ -11,34 +11,34 @@ RawFilter createRawFilter(const std::string_view& value, size_t conjunctiveIndex
 }
 
 TEST(SparserQueryTest, GenerateOutput) {
-    const Predicate pred1 = {"p1"};
-    const Predicate pred2 = {"p2"};
-    const Predicate pred3 = {"p3"};
-    const Predicate pred4 = {"p4"};
+    const Predicate pred1{"p1"};
+    const Predicate pred2{"p2"};
+    const Predicate pred3{"p3"};
+    const Predicate pred4{"p4"};
 
-    const PredicateConjunction conj1 = {{pred1, pred2}};
-    const PredicateConjunction conj2 = {{pred3, pred4}};
+    const PredicateConjunction conj1{{pred1, pred2}};
+    const PredicateConjunction conj2{{pred3, pred4}};
 
-    const PredicateDisjunction disj = {{conj1, conj2}};
-    const SparserQuery query = {disj};
+    const PredicateDisjunction disj{{conj1, conj2}};
+    const SparserQuery query{disj};
 
-    const std::string expected = "(p1 ∧ p2) ∨ (p3 ∧ p4)\n";
+    const std::string expected{"(p1 ∧ p2) ∨ (p3 ∧ p4)\n"};
     auto actual = query.generateOutput();
 
     ASSERT_EQ(expected, actual);
 }
 
 TEST(SparserQueryTest, GenerateRawFiltersForQueryTest) {
-    const Predicate pred1 = {"Lord of the Rings"};
-    const Predicate pred2 = {"Harry Potter"};
-    const Predicate pred3 = {"The Hobbit"};
+    const Predicate pred1{"Lord of the Rings"};
+    const Predicate pred2{"Harry Potter"};
+    const Predicate pred3{"The Hobbit"};
 
-    const PredicateConjunction conj1 = {{pred1, pred2}};
-    const PredicateConjunction conj2 = {{pred3}};
-    const PredicateDisjunction disj = {{conj1, conj2}};
-    const SparserQuery query = {disj};
+    const PredicateConjunction conj1{{pred1, pred2}};
+    const PredicateConjunction conj2{{pred3}};
+    const PredicateDisjunction disj{{conj1, conj2}};
+    const SparserQuery query{disj};
 
-    const std::vector<RawFilter> expected = {
+    const std::vector<RawFilter> expected{
         createRawFilter("Lord", 0, 0), createRawFilter("ord ", 0, 0), createRawFilter("rd o", 0, 0),
         createRawFilter("d of", 0, 0), createRawFilter(" of ", 0, 0), createRawFilter("of t", 0, 0),
         createRawFilter("f th", 0, 0), createRawFilter(" the", 0, 0), createRawFilter("the ", 0, 0),
@@ -60,9 +60,9 @@ TEST(SparserQueryTest, GenerateRawFiltersForQueryTest) {
 }
 
 TEST(SparserQueryTest, GenerateRawFiltersForSinglePredicate) {
-    const Predicate pred1 = {"Harry Potter"};
+    const Predicate pred1{"Harry Potter"};
 
-    const std::vector<std::string_view> expected = {
+    const std::vector<std::string_view> expected{
         "Harr", "arry", "rry ", "ry P", "y Po", " Pot", "Pott", "otte", "tter",
     };
 
