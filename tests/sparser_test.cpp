@@ -6,67 +6,71 @@
 #include <string_view>
 #include <vector>
 
-RawFilter createRawFilter(const std::string_view& value, size_t conjunctiveIndex, size_t predicateIndex) {
-    return RawFilter{value, conjunctiveIndex, predicateIndex};
-}
+TEST(SparserQueryTest, ToString) {
+    const Predicate pred_1{"p1"};
+    const Predicate pred_2{"p2"};
+    const Predicate pred_3{"p3"};
+    const Predicate pred_4{"p4"};
 
-TEST(SparserQueryTest, GenerateOutput) {
-    const Predicate pred1{"p1"};
-    const Predicate pred2{"p2"};
-    const Predicate pred3{"p3"};
-    const Predicate pred4{"p4"};
+    const PredicateConjunction conj_1{{pred_1, pred_2}};
+    const PredicateConjunction conj_2{{pred_3, pred_4}};
 
-    const PredicateConjunction conj1{{pred1, pred2}};
-    const PredicateConjunction conj2{{pred3, pred4}};
-
-    const PredicateDisjunction disj{{conj1, conj2}};
+    const PredicateDisjunction disj{{conj_1, conj_2}};
     const SparserQuery query{disj};
 
     const std::string expected{"(p1 ∧ p2) ∨ (p3 ∧ p4)\n"};
-    auto actual = query.generateOutput();
+    auto actual = query.ToString();
 
     ASSERT_EQ(expected, actual);
 }
 
 TEST(SparserQueryTest, GenerateRawFiltersForQueryTest) {
-    const Predicate pred1{"Lord of the Rings"};
-    const Predicate pred2{"Harry Potter"};
-    const Predicate pred3{"The Hobbit"};
+    const Predicate pred_1{"Lord of the Rings"};
+    const Predicate pred_2{"Harry Potter"};
+    const Predicate pred_3{"The Hobbit"};
 
-    const PredicateConjunction conj1{{pred1, pred2}};
-    const PredicateConjunction conj2{{pred3}};
-    const PredicateDisjunction disj{{conj1, conj2}};
+    const PredicateConjunction conj_1{{pred_1, pred_2}};
+    const PredicateConjunction conj_2{{pred_3}};
+    const PredicateDisjunction disj{{conj_1, conj_2}};
     const SparserQuery query{disj};
 
-    const std::vector<RawFilter> expected{
-        createRawFilter("Lord", 0, 0), createRawFilter("ord ", 0, 0), createRawFilter("rd o", 0, 0),
-        createRawFilter("d of", 0, 0), createRawFilter(" of ", 0, 0), createRawFilter("of t", 0, 0),
-        createRawFilter("f th", 0, 0), createRawFilter(" the", 0, 0), createRawFilter("the ", 0, 0),
-        createRawFilter("he R", 0, 0), createRawFilter("e Ri", 0, 0), createRawFilter(" Rin", 0, 0),
-        createRawFilter("Ring", 0, 0), createRawFilter("ings", 0, 0), createRawFilter("Harr", 0, 1),
-        createRawFilter("arry", 0, 1), createRawFilter("rry ", 0, 1), createRawFilter("ry P", 0, 1),
-        createRawFilter("y Po", 0, 1), createRawFilter(" Pot", 0, 1), createRawFilter("Pott", 0, 1),
-        createRawFilter("otte", 0, 1), createRawFilter("tter", 0, 1), createRawFilter("The ", 1, 0),
-        createRawFilter("he H", 1, 0), createRawFilter("e Ho", 1, 0), createRawFilter(" Hob", 1, 0),
-        createRawFilter("Hobb", 1, 0), createRawFilter("obbi", 1, 0), createRawFilter("bbit", 1, 0),
-    };
+    const std::vector<std::string_view> expected_filters{"Lord", "ord ", "rd o", "d of", " of ", "of t", "f th", " the",
+                                                         "the ", "he R", "e Ri", " Rin", "Ring", "ings", "Harr", "arry",
+                                                         "rry ", "ry P", "y Po", " Pot", "Pott", "otte", "tter", "The ",
+                                                         "he H", "e Ho", " Hob", "Hobb", "obbi", "bbit"};
 
-    const auto actual = RawFilterQueryGenerator::generateRawFilters(query);
+    const std::vector<size_t> expected_conjunctive_indices{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                           0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1};
 
-    ASSERT_EQ(expected.size(), actual.size());
-    for (size_t i = 0; i < expected.size(); ++i) {
-        ASSERT_EQ(expected[i], actual[i]);
+    const std::vector<size_t> expected_predicate_indices{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+                                                         1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
+
+    const auto actual = RawFilterQueryGenerator::GenerateRawFilters(query.get_disjunction());
+
+    ASSERT_EQ(expected_filters.size(), actual.raw_filters.size());
+    for (size_t i = 0; i < expected_filters.size(); ++i) {
+        ASSERT_EQ(expected_filters[i], actual.raw_filters[i]);
+    }
+
+    ASSERT_EQ(expected_conjunctive_indices.size(), actual.conjunctive_indices.size());
+    for (size_t i = 0; i < expected_conjunctive_indices.size(); ++i) {
+        ASSERT_EQ(expected_conjunctive_indices[i], actual.conjunctive_indices[i]);
+    }
+
+    ASSERT_EQ(expected_predicate_indices.size(), actual.predicate_indices.size());
+    for (size_t i = 0; i < expected_predicate_indices.size(); ++i) {
+        ASSERT_EQ(expected_predicate_indices[i], actual.predicate_indices[i]);
     }
 }
 
 TEST(SparserQueryTest, GenerateRawFiltersForSinglePredicate) {
-    const Predicate pred1{"Harry Potter"};
+    const Predicate pred_1{"Harry Potter"};
 
     const std::vector<std::string_view> expected{
         "Harr", "arry", "rry ", "ry P", "y Po", " Pot", "Pott", "otte", "tter",
     };
 
-    const auto actual = RawFilterQueryGenerator::generateRawFilters(pred1.value);
+    const auto actual = RawFilterQueryGenerator::GenerateRawFiltersFromPredicate(pred_1.value);
 
     ASSERT_EQ(expected.size(), actual.size());
     for (size_t i = 0; i < expected.size(); ++i) {
