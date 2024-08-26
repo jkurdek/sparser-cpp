@@ -19,7 +19,10 @@ HeaderFilterRegex: ''
 FormatStyle:     none
 
 CheckOptions:
-  - key: readability-identifier-length.IgnoredVariableNames
+
+- key: readability-identifier-length.IgnoredVariableNames
     value: 'x|y|z'
-  - key: readability-identifier-length.IgnoredParameterNames
+- key: readability-identifier-length.IgnoredParameterNames
     value: 'x|y|z'
+- key: bugprone-easily-swappable-parameters.MinimumLength
+  value: '3'
