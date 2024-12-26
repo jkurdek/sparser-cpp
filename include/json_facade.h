@@ -11,15 +11,13 @@
 class JsonFacade {
    public:
     virtual ~JsonFacade() = default;
-    virtual bool Parse(std::string_view jsonStr) = 0;
-    virtual bool HasKey(std::string_view key) const = 0;
+    virtual void Parse(std::string_view jsonStr) = 0;
     virtual std::optional<std::string_view> GetString(std::string_view key) const = 0;
 };
 
 class RapidJsonFacade : public JsonFacade {
    public:
-    bool Parse(std::string_view jsonStr) override;
-    bool HasKey(std::string_view key) const override;
+    void Parse(std::string_view jsonStr) override;
     std::optional<std::string_view> GetString(std::string_view key) const override;
 
    private:

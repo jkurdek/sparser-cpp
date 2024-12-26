@@ -1,14 +1,15 @@
 #include "json_facade.h"
 
 #include <optional>
+#include <stdexcept>
 #include <string_view>
 
 #include "rapidjson/document.h"
 
-bool RapidJsonFacade::Parse(std::string_view jsonStr) {
+void RapidJsonFacade::Parse(std::string_view jsonStr) {
     rapidjson::ParseResult ok = doc_.Parse(jsonStr.data());
     if (!ok || !doc_.IsObject()) {
-        return false;
+        throw std::runtime_error("Failed to parse JSON string");
     }
     key_value_map_.clear();
 
@@ -18,10 +19,7 @@ bool RapidJsonFacade::Parse(std::string_view jsonStr) {
             key_value_map_[key] = it->value.GetString();
         }
     }
-    return true;
 }
-
-bool RapidJsonFacade::HasKey(std::string_view key) const { return key_value_map_.contains(key); }
 
 std::optional<std::string_view> RapidJsonFacade::GetString(std::string_view key) const {
     auto it = key_value_map_.find(key);
@@ -32,18 +30,12 @@ std::optional<std::string_view> RapidJsonFacade::GetString(std::string_view key)
 }
 
 bool JsonQueryDriver::RunQuery(std::string_view buffer, const JsonQuery& query) {
-    if (!json_facade_->Parse(buffer)) {
-        return false;
-    }
+    json_facade_->Parse(buffer);
 
     for (const auto& conjunction : query.GetDisjunction().conjunctions) {
         bool all_predicates_satisfied = true;
 
         for (const auto& predicate : conjunction.predicates) {
-            if (!json_facade_->HasKey(predicate.key)) {
-                all_predicates_satisfied = false;
-                break;
-            }
             auto value = json_facade_->GetString(predicate.key);
             if (!value.has_value() || value.value() != predicate.value) {
                 all_predicates_satisfied = false;

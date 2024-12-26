@@ -83,10 +83,7 @@ TEST(SparserQueryTest, GenerateRawFiltersForSinglePredicate) {
 TEST(RapidJsonFacadeTest, ParseValidJson) {
     RapidJsonFacade facade;
     std::string_view validJson = R"({"name":"John","age":"30"})";
-    EXPECT_TRUE(facade.Parse(validJson)) << "Failed to parse a valid JSON string";
-
-    EXPECT_TRUE(facade.HasKey("name"));
-    EXPECT_TRUE(facade.HasKey("age"));
+    facade.Parse(validJson);
 
     auto nameValue = facade.GetString("name");
     ASSERT_TRUE(nameValue.has_value());
@@ -100,22 +97,19 @@ TEST(RapidJsonFacadeTest, ParseValidJson) {
 TEST(RapidJsonFacadeTest, ParseInvalidJson) {
     RapidJsonFacade facade;
     std::string_view invalidJson = R"({invalid json})";  // Missing quotes, braces, etc.
-    EXPECT_FALSE(facade.Parse(invalidJson)) << "Should fail to parse invalid JSON";
-    EXPECT_FALSE(facade.HasKey("randomKey"));
+    EXPECT_ANY_THROW(facade.Parse(invalidJson)) << "Should fail to parse invalid JSON";
     EXPECT_FALSE(facade.GetString("randomKey").has_value());
 }
 
 TEST(RapidJsonFacadeTest, HasKeyAndGetString) {
     RapidJsonFacade facade;
     std::string_view json = R"({"fruit":"apple"})";
-    EXPECT_TRUE(facade.Parse(json));
+    facade.Parse(json);
 
-    EXPECT_TRUE(facade.HasKey("fruit"));
     auto fruitVal = facade.GetString("fruit");
     ASSERT_TRUE(fruitVal.has_value());
     EXPECT_EQ(*fruitVal, "apple");
 
-    EXPECT_FALSE(facade.HasKey("color"));
     auto colorVal = facade.GetString("color");
     EXPECT_FALSE(colorVal.has_value());
 }
