@@ -20,8 +20,8 @@ struct EstimationResult {
 };
 
 struct Predicate {
-    std::string value;
     std::string key;
+    std::string value;
 };
 
 struct PredicateConjunction {
