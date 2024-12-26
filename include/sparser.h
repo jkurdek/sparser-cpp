@@ -1,17 +1,27 @@
 #ifndef SPARSER_H_
 #define SPARSER_H_
 
-#include <algorithm>
+#include <array>
+#include <bitset>
+#include <cstddef>
 #include <iostream>
-#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
 
 constexpr size_t kRfSize = 4;
+constexpr size_t kSampleSize = 10;
+constexpr size_t kMaxRfs = 32;
+
+struct EstimationResult {
+    std::array<double, kMaxRfs> total_rf_runtimes;
+    double total_parser_runtime;
+    std::array<std::bitset<kMaxRfs>, kSampleSize> bitsets;
+};
 
 struct Predicate {
     std::string value;
+    std::string key;
 };
 
 struct PredicateConjunction {
@@ -22,49 +32,35 @@ struct PredicateDisjunction {
     std::vector<PredicateConjunction> conjunctions;
 };
 
-class SparserQuery {
+class JsonQuery {
    private:
     PredicateDisjunction disjunction_;
 
    public:
-    explicit SparserQuery(const PredicateDisjunction& disjunction) : disjunction_(disjunction) {}
+    explicit JsonQuery(const PredicateDisjunction& disjunction) : disjunction_(disjunction) {}
 
-    [[nodiscard]] const PredicateDisjunction& get_disjunction() const { return disjunction_; }
-
+    [[nodiscard]] const inline PredicateDisjunction& GetDisjunction() const { return disjunction_; }
     [[nodiscard]] std::string ToString() const;
-    friend std::ostream& operator<<(std::ostream& os, const SparserQuery& query);
+
+    friend std::ostream& operator<<(std::ostream& os, const JsonQuery& query);
 };
 
 struct RawFilterData {
+    size_t size;
     std::vector<std::string_view> raw_filters;
     std::vector<size_t> conjunctive_indices;
     std::vector<size_t> predicate_indices;
-};
-
-class RawFilter {
-   private:
-    std::string_view value_;
-    size_t conjunctive_index_;
-    size_t predicate_index_;
-
-   public:
-    explicit RawFilter(const std::string_view& value, size_t conjunctive_index, size_t predicate_index)
-        : value_(value), conjunctive_index_(conjunctive_index), predicate_index_(predicate_index) {}
-
-    [[nodiscard]] std::string_view get_value() const { return value_; }
-    [[nodiscard]] size_t get_conjunctive_index() const { return conjunctive_index_; }
-    [[nodiscard]] size_t get_predicate_index() const { return predicate_index_; }
-
-    bool operator==(const RawFilter& other) const;
-
-    [[nodiscard]] std::string ToString() const;
-    friend std::ostream& operator<<(std::ostream& os, const RawFilter& filter);
 };
 
 class RawFilterQueryGenerator {
    public:
     static RawFilterData GenerateRawFilters(const PredicateDisjunction& disjunction);
     static std::vector<std::string_view> GenerateRawFiltersFromPredicate(const std::string_view& input);
+};
+
+class Sparser {
+   public:
+    void calibrate(const std::vector<std::string_view>& input, RawFilterData raw_filter_data);
 };
 
 #endif  // SPARSER_H_

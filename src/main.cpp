@@ -4,6 +4,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
 constexpr double GIGABYTE = 1e9;
 
@@ -13,11 +14,11 @@ constexpr double GIGABYTE = 1e9;
  * @param filename The name of the file to be read.
  * @return A string containing the contents of the file.
  */
-std::string readFile(const std::string& filename) {
+std::string readFile(std::string_view filename) {
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
 
     if (!file) {
-        throw std::runtime_error("Error opening file: " + filename);
+        throw std::runtime_error("Error opening file: " + std::string(filename));
     }
 
     auto fileSize = file.tellg();
@@ -26,7 +27,7 @@ std::string readFile(const std::string& filename) {
     std::string buffer(fileSize, '\0');
 
     if (!file.read(buffer.data(), fileSize)) {
-        throw std::runtime_error("Error reading file: " + filename);
+        throw std::runtime_error("Error reading file: " + std::string(filename));
     }
 
     return buffer;

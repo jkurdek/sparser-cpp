@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_compile_options(-Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(ENABLE_CLANG_TIDY)
     if(CLANG_TIDY)
