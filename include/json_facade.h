@@ -2,11 +2,38 @@
 #define JSON_FACADE_H_
 
 #include <optional>
+#include <string>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
 
 #include "rapidjson/document.h"
-#include "sparser.h"
+
+struct Predicate {
+    std::string key;
+    std::string value;
+};
+
+struct PredicateConjunction {
+    std::vector<Predicate> predicates;
+};
+
+struct PredicateDisjunction {
+    std::vector<PredicateConjunction> conjunctions;
+};
+
+class JsonQuery {
+   private:
+    PredicateDisjunction disjunction_;
+
+   public:
+    explicit JsonQuery(const PredicateDisjunction& disjunction) : disjunction_(disjunction) {}
+
+    [[nodiscard]] const inline PredicateDisjunction& GetDisjunction() const { return disjunction_; }
+    [[nodiscard]] std::string ToString() const;
+
+    friend std::ostream& operator<<(std::ostream& os, const JsonQuery& query);
+};
 
 class JsonFacade {
    public:

@@ -4,10 +4,10 @@
 #include <array>
 #include <bitset>
 #include <cstddef>
-#include <iostream>
-#include <string>
 #include <string_view>
 #include <vector>
+
+#include "json_facade.h"
 
 constexpr size_t kRfSize = 4;
 constexpr size_t kSampleSize = 10;
@@ -17,32 +17,6 @@ struct EstimationResult {
     std::array<double, kMaxRfs> total_rf_runtimes;
     double total_parser_runtime;
     std::array<std::bitset<kMaxRfs>, kSampleSize> bitsets;
-};
-
-struct Predicate {
-    std::string key;
-    std::string value;
-};
-
-struct PredicateConjunction {
-    std::vector<Predicate> predicates;
-};
-
-struct PredicateDisjunction {
-    std::vector<PredicateConjunction> conjunctions;
-};
-
-class JsonQuery {
-   private:
-    PredicateDisjunction disjunction_;
-
-   public:
-    explicit JsonQuery(const PredicateDisjunction& disjunction) : disjunction_(disjunction) {}
-
-    [[nodiscard]] const inline PredicateDisjunction& GetDisjunction() const { return disjunction_; }
-    [[nodiscard]] std::string ToString() const;
-
-    friend std::ostream& operator<<(std::ostream& os, const JsonQuery& query);
 };
 
 struct RawFilterData {
@@ -60,7 +34,12 @@ class RawFilterQueryGenerator {
 
 class Sparser {
    public:
+    explicit Sparser(std::unique_ptr<JsonQueryDriver>&& json_query_driver = {})
+        : json_query_driver_(std::move(json_query_driver)) {}
     void calibrate(const std::vector<std::string_view>& input, RawFilterData raw_filter_data);
+
+   private:
+    std::unique_ptr<JsonQueryDriver> json_query_driver_;
 };
 
 #endif  // SPARSER_H_
