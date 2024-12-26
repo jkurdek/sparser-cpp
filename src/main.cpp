@@ -14,7 +14,7 @@ constexpr double GIGABYTE = 1e9;
  * @param filename The name of the file to be read.
  * @return A string containing the contents of the file.
  */
-std::string readFile(std::string_view filename) {
+std::string readFile(std::string filename) {
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
 
     if (!file) {
