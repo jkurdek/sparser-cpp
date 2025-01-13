@@ -26,42 +26,59 @@ TEST(SparserQueryTest, ToString) {
     ASSERT_EQ(expected, actual);
 }
 
-TEST(SparserQueryTest, GenerateRawFiltersForQueryTest) {
+TEST(SparserQueryTest, GenerateRawFiltersForQueryTests) {
     const Predicate pred_1{.key = "title", .value = "Lord of the Rings"};
     const Predicate pred_2{.key = "title", .value = "Harry Potter"};
     const Predicate pred_3{.key = "title", .value = "The Hobbit"};
 
     const PredicateConjunction conj_1{{pred_1, pred_2}};
     const PredicateConjunction conj_2{{pred_3}};
+
     const PredicateDisjunction disj{{conj_1, conj_2}};
-    const JsonQuery query{disj};
 
-    const std::vector<std::string_view> expected_filters{"Lord", "ord ", "rd o", "d of", " of ", "of t", "f th", " the",
-                                                         "the ", "he R", "e Ri", " Rin", "Ring", "ings", "Harr", "arry",
-                                                         "rry ", "ry P", "y Po", " Pot", "Pott", "otte", "tter", "The ",
-                                                         "he H", "e Ho", " Hob", "Hobb", "obbi", "bbit"};
+    const RawFilterDisjunction expected{
+        .conjunctions =
+            {
+                RawFilterConjunction{
+                    .predicates =
+                        {
+                            RawFilterPredicate{
+                                .raw_filters = {"Lord", "ord ", "rd o", "d of", " of ", "of t", "f th", " the", "the ",
+                                                "he R", "e Ri", " Rin", "Ring", "ings"},
+                            },
+                            RawFilterPredicate{
+                                .raw_filters = {"Harr", "arry", "rry ", "ry P", "y Po", " Pot", "Pott", "otte", "tter"},
+                            },
+                        },
+                },
+                RawFilterConjunction{
+                    .predicates =
+                        {
+                            RawFilterPredicate{
+                                .raw_filters = {"The ", "he H", "e Ho", " Hob", "Hobb", "obbi", "bbit"},
+                            },
+                        },
+                },
+            },
+    };
 
-    const std::vector<size_t> expected_conjunctive_indices{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                                           0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1};
+    const auto actual = RawFilterQueryGenerator::GenerateRawFilters(disj);
 
-    const std::vector<size_t> expected_predicate_indices{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                                                         1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
+    ASSERT_EQ(expected.conjunctions.size(), actual.conjunctions.size());
+    for (size_t conj_idx = 0; conj_idx < expected.conjunctions.size(); ++conj_idx) {
+        const auto& expected_conjunction = expected.conjunctions[conj_idx];
+        const auto& actual_conjunction = actual.conjunctions[conj_idx];
 
-    const auto actual = RawFilterQueryGenerator::GenerateRawFilters(query.GetDisjunction());
+        ASSERT_EQ(expected_conjunction.predicates.size(), actual_conjunction.predicates.size());
+        for (size_t pred_idx = 0; pred_idx < expected_conjunction.predicates.size(); ++pred_idx) {
+            const auto& expected_predicate = expected_conjunction.predicates[pred_idx];
+            const auto& actual_predicate = actual_conjunction.predicates[pred_idx];
 
-    ASSERT_EQ(expected_filters.size(), actual.raw_filters.size());
-    for (size_t i = 0; i < expected_filters.size(); ++i) {
-        ASSERT_EQ(expected_filters[i], actual.raw_filters[i]);
-    }
-
-    ASSERT_EQ(expected_conjunctive_indices.size(), actual.conjunctive_indices.size());
-    for (size_t i = 0; i < expected_conjunctive_indices.size(); ++i) {
-        ASSERT_EQ(expected_conjunctive_indices[i], actual.conjunctive_indices[i]);
-    }
-
-    ASSERT_EQ(expected_predicate_indices.size(), actual.predicate_indices.size());
-    for (size_t i = 0; i < expected_predicate_indices.size(); ++i) {
-        ASSERT_EQ(expected_predicate_indices[i], actual.predicate_indices[i]);
+            ASSERT_EQ(expected_predicate.raw_filters.size(), actual_predicate.raw_filters.size());
+            for (size_t rf_idx = 0; rf_idx < expected_predicate.raw_filters.size(); ++rf_idx) {
+                ASSERT_EQ(expected_predicate.raw_filters[rf_idx], actual_predicate.raw_filters[rf_idx]);
+            }
+        }
     }
 }
 
@@ -167,4 +184,23 @@ TEST(JsonQueryDriverTest, RunQuery_PartialConjunctionFail) {
 
     bool result = driver.RunQuery(testJson, query);
     EXPECT_FALSE(result) << "Expected the query NOT to match because the age mismatch fails the conjunction.";
+}
+
+TEST(CascadeBuilderTest, GeneratesCorrectNumberOfCascades) {
+    Predicate pred1{.key = "name", .value = "John"};
+    Predicate pred2{.key = "region", .value = "EMEA"};
+    Predicate pred3{.key = "name", .value = "Jane"};
+
+    PredicateConjunction conj1{{pred1, pred2}};
+    PredicateConjunction conj2{{
+        pred3,
+    }};
+    PredicateDisjunction disj{{conj1, conj2}};
+
+    RawFilterDisjunction raw_filter_data = RawFilterQueryGenerator::GenerateRawFilters(disj);
+
+    CascadeBuilder builder(disj, raw_filter_data);
+    auto valid_cascades = builder.GenerateValidCascades();
+
+    ASSERT_EQ(8, valid_cascades.size());
 }
