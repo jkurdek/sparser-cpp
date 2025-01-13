@@ -158,8 +158,8 @@ std::vector<std::shared_ptr<Node>> CascadeBuilder::HandleSuccess(const size_t cu
     return valid_subtrees;
 }
 
-void PrettyPrint(const std::shared_ptr<Node>& node, const std::string& prefix, bool isLeft, std::ostream& os,
-                 RawFilterDisjunction& rf_data) {
+void PrettyPrint(const std::shared_ptr<Node>& node, RawFilterDisjunction& rf_data, const std::string& prefix,
+                 bool isLeft, std::ostream& os) {
     if (!node) {
         // Print "NULL" or some placeholder for an empty child.
         os << prefix << (isLeft ? "├── " : "└── ") << "NULL\n";
@@ -177,6 +177,6 @@ void PrettyPrint(const std::shared_ptr<Node>& node, const std::string& prefix, b
     auto newPrefix = prefix + (isLeft ? "│   " : "    ");
 
     // Recursively print left and right subtrees.
-    PrettyPrint(node->left, newPrefix, true, os);
-    PrettyPrint(node->right, newPrefix, false, os);
+    PrettyPrint(node->left, rf_data, newPrefix, true, os);
+    PrettyPrint(node->right, rf_data, newPrefix, false, os);
 }

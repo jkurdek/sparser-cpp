@@ -80,7 +80,7 @@ class CascadeBuilder {
     std::vector<std::shared_ptr<Node>> HandleSuccess(const size_t current_depth, const size_t conjunction_idx);
 };
 
-void PrettyPrint(const std::shared_ptr<Node>& node, const std::string& prefix = "", bool isLeft = true,
-                 std::ostream& os = std::cout);
+void PrettyPrint(const std::shared_ptr<Node>& node, const RawFilterDisjunction& rf_data, const std::string& prefix = "",
+                 bool isLeft = true, std::ostream& os = std::cout);
 
 #endif  // SPARSER_H_
