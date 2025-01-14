@@ -12,20 +12,22 @@
 #include "common.h"
 #include "json_facade.h"
 
-RawFilterDisjunction RawFilterQueryGenerator::GenerateRawFilters(const PredicateDisjunction& disjunction) {
-    RawFilterDisjunction raw_filter_disjunction;
+RawFilterData RawFilterQueryGenerator::GenerateRawFilters(const PredicateDisjunction& disjunction) {
+    RawFilterData rf_data;
     for (size_t conj_idx = 0; conj_idx < disjunction.conjunctions.size(); ++conj_idx) {
         const auto& conjunction = disjunction.conjunctions[conj_idx];
-        RawFilterConjunction raw_filter_conjunction;
         for (size_t pred_idx = 0; pred_idx < conjunction.predicates.size(); ++pred_idx) {
             const auto& predicate = conjunction.predicates[pred_idx];
-            RawFilterPredicate raw_filter_predicate;
-            raw_filter_predicate.raw_filters = GenerateRawFiltersFromPredicate(predicate.value);
-            raw_filter_conjunction.predicates.push_back(raw_filter_predicate);
+            auto raw_filters = GenerateRawFiltersFromPredicate(predicate.value);
+            for (size_t rf_idx = 0; rf_idx < raw_filters.size(); ++rf_idx) {
+                rf_data.data[conj_idx][pred_idx][rf_idx] = raw_filters[rf_idx];
+                rf_data.rf_count[conj_idx][pred_idx]++;
+            }
+            rf_data.pred_count[conj_idx]++;
         }
-        raw_filter_disjunction.conjunctions.push_back(raw_filter_conjunction);
+        rf_data.conj_count++;
     }
-    return raw_filter_disjunction;
+    return rf_data;
 }
 
 std::vector<std::string_view> RawFilterQueryGenerator::GenerateRawFiltersFromPredicate(
@@ -38,50 +40,34 @@ std::vector<std::string_view> RawFilterQueryGenerator::GenerateRawFiltersFromPre
 }
 
 EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, const JsonQuery& json_query,
-                                    const RawFilterDisjunction& rf_data) {
+                                    const RawFilterData& rf_data) {
     auto result = EstimationResult{};
-
-    uint32_t conj_idx = 0;
-    uint32_t pred_idx = 0;
-    uint32_t rf_idx = 0;
 
     assert(input.size() >= kSampleSize);
 
     for (size_t i = 0; i < kSampleSize; i++) {
         auto json_row = input[i];
-        for (size_t t = 0; t < kMaxRfs; t++) {
-            auto rf = rf_data.conjunctions[conj_idx].predicates[pred_idx].raw_filters[rf_idx];
+        for (uint32_t conj_idx = 0; conj_idx < rf_data.conj_count; conj_idx++) {
+            for (uint32_t pred_idx = 0; pred_idx < rf_data.pred_count[conj_idx]; pred_idx++) {
+                for (uint32_t rf_idx = 0; rf_idx < rf_data.rf_count[conj_idx][pred_idx]; rf_idx++) {
+                    auto rf = rf_data.data[conj_idx][pred_idx][rf_idx];
+                    std::cout << "Grepping... : " << rf << "\n";
 
-            // TODO: This is a bit ugly, but it works for now
-            rf_idx++;
-            if (rf_idx >= rf_data.conjunctions[conj_idx].predicates[pred_idx].raw_filters.size()) {
-                rf_idx = 0;
-                pred_idx++;
-                if (pred_idx >= rf_data.conjunctions[conj_idx].predicates.size()) {
-                    pred_idx = 0;
-                    conj_idx++;
-                    if (conj_idx >= rf_data.conjunctions.size()) {
-                        break;
+                    auto grepStart = benchmark_start();
+                    auto find_result = json_row.find(rf);
+
+                    auto idx = conj_idx * kMaxPred + pred_idx * kMaxRfsInPred + rf_idx;
+
+                    result.total_rf_runtimes[idx] += benchmark_stop(grepStart);
+
+                    if (find_result != std::string_view::npos) {
+                        std::cout << "Found: " << rf << "\n";
+                        result.bitsets[idx].set(i);
+                    } else {
+                        std::cout << "Not found: " << rf << "\n";
                     }
                 }
             }
-
-            std::cout << "Grepping... : " << rf << "\n";
-
-            auto grepStart = benchmark_start();
-            auto find_result = json_row.find(rf);
-
-            result.total_rf_runtimes[i] += benchmark_stop(grepStart);
-            if (find_result != std::string_view::npos) {
-                std::cout << "Found: " << rf << "\n";
-                result.bitsets[rf_idx].set(i);
-            } else {
-                std::cout << "Not found: " << rf << "\n";
-            }
-
-            auto parse_start = benchmark_start();
-            json_query_driver_->RunQuery(json_row, json_query);
-            result.total_parser_runtime += benchmark_stop(parse_start);
         }
     }
 
@@ -100,13 +86,12 @@ std::vector<std::shared_ptr<Node>> CascadeBuilder::HandleFail(const size_t curre
 
     std::vector<std::shared_ptr<Node>> valid_subtrees;
 
-    for (size_t conj_idx = 0; conj_idx < disjunction_.conjunctions.size(); conj_idx++) {
+    for (size_t conj_idx = 0; conj_idx < rf_data_.conj_count; conj_idx++) {
         if (!used_conjunctions_.test(conj_idx)) {
             used_conjunctions_.set(conj_idx);
 
-            for (size_t pred_idx = 0; pred_idx < disjunction_.conjunctions[conj_idx].predicates.size(); pred_idx++) {
-                for (size_t rf_idx = 0;
-                     rf_idx < rf_data_.conjunctions[conj_idx].predicates[pred_idx].raw_filters.size(); rf_idx++) {
+            for (size_t pred_idx = 0; pred_idx < rf_data_.pred_count[conj_idx]; pred_idx++) {
+                for (size_t rf_idx = 0; rf_idx < rf_data_.rf_count[conj_idx][pred_idx]; rf_idx++) {
                     if (!used_predicates_[conj_idx][pred_idx].test(rf_idx)) {
                         used_predicates_[conj_idx][pred_idx].set(rf_idx);
 
@@ -143,9 +128,8 @@ std::vector<std::shared_ptr<Node>> CascadeBuilder::HandleSuccess(const size_t cu
     valid_subtrees.emplace_back(nullptr);  // Finishing here is valid
 
     if (free > 0) {
-        for (size_t pred_idx = 0; pred_idx < disjunction_.conjunctions[conj_idx].predicates.size(); pred_idx++) {
-            for (size_t rf_idx = 0; rf_idx < rf_data_.conjunctions[conj_idx].predicates[pred_idx].raw_filters.size();
-                 rf_idx++) {
+        for (size_t pred_idx = 0; pred_idx < rf_data_.pred_count[conj_idx]; pred_idx++) {
+            for (size_t rf_idx = 0; rf_idx < rf_data_.rf_count[conj_idx][pred_idx]; rf_idx++) {
                 if (!used_predicates_[conj_idx][pred_idx].test(rf_idx)) {
                     used_predicates_[conj_idx][pred_idx].set(rf_idx);
 
@@ -168,8 +152,8 @@ std::vector<std::shared_ptr<Node>> CascadeBuilder::HandleSuccess(const size_t cu
     return valid_subtrees;
 }
 
-void PrettyPrint(const std::shared_ptr<Node>& node, RawFilterDisjunction& rf_data, const std::string& prefix,
-                 bool isLeft, std::ostream& os) {
+void PrettyPrint(const std::shared_ptr<Node>& node, RawFilterData& rf_data, const std::string& prefix, bool isLeft,
+                 std::ostream& os) {
     if (!node) {
         // Print "NULL" or some placeholder for an empty child.
         os << prefix << (isLeft ? "├── " : "└── ") << "NULL\n";
@@ -178,8 +162,7 @@ void PrettyPrint(const std::shared_ptr<Node>& node, RawFilterDisjunction& rf_dat
 
     // Print the data of the current node.
     os << prefix << (isLeft ? "├── " : "└── ")
-       << rf_data.conjunctions[node->conjunction_idx].predicates[node->predicate_idx].raw_filters[node->raw_filter_idx]
-       << "\n";
+       << rf_data.data[node->conjunction_idx][node->predicate_idx][node->raw_filter_idx] << "\n";
 
     // For the left and right children, adjust the prefix
     // (use the extended vertical bar "│" if we're continuing

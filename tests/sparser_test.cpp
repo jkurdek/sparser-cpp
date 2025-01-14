@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -36,47 +37,37 @@ TEST(SparserQueryTest, GenerateRawFiltersForQueryTests) {
 
     const PredicateDisjunction disj{{conj_1, conj_2}};
 
-    const RawFilterDisjunction expected{
-        .conjunctions =
-            {
-                RawFilterConjunction{
-                    .predicates =
-                        {
-                            RawFilterPredicate{
-                                .raw_filters = {"Lord", "ord ", "rd o", "d of", " of ", "of t", "f th", " the", "the ",
-                                                "he R", "e Ri", " Rin", "Ring", "ings"},
-                            },
-                            RawFilterPredicate{
-                                .raw_filters = {"Harr", "arry", "rry ", "ry P", "y Po", " Pot", "Pott", "otte", "tter"},
-                            },
-                        },
-                },
-                RawFilterConjunction{
-                    .predicates =
-                        {
-                            RawFilterPredicate{
-                                .raw_filters = {"The ", "he H", "e Ho", " Hob", "Hobb", "obbi", "bbit"},
-                            },
-                        },
-                },
-            },
+    auto expected = std::array<std::array<std::array<std::string_view, kMaxRfsInPred>, kMaxPred>, kMaxConj>();
+
+    auto expected_conj_1_pred_1 = std::array<std::string_view, kMaxRfsInPred>{
+        "Lord", "ord ", "rd o", "d of", " of ", "of t", "f th", " the", "the ", "he R", "e Ri", " Rin", "Ring", "ings"};
+
+    auto expected_conj_1_pred_2 = std::array<std::string_view, kMaxRfsInPred>{"Harr", "arry", "rry ", "ry P", "y Po",
+                                                                              " Pot", "Pott", "otte", "tter"};
+
+    auto expected_conj_2_pred_1 =
+        std::array<std::string_view, kMaxRfsInPred>{"The ", "he H", "e Ho", " Hob", "Hobb", "obbi", "bbit"};
+
+    expected[0][0] = expected_conj_1_pred_1;
+    expected[0][1] = expected_conj_1_pred_2;
+    expected[1][0] = expected_conj_2_pred_1;
+
+    const RawFilterData expected_rf_data{
+        .data = expected,
+        .rf_count = {{{14, 9}, {7}}},
+        .pred_count = {2, 1},
+        .conj_count = 2,
     };
 
     const auto actual = RawFilterQueryGenerator::GenerateRawFilters(disj);
 
-    ASSERT_EQ(expected.conjunctions.size(), actual.conjunctions.size());
-    for (size_t conj_idx = 0; conj_idx < expected.conjunctions.size(); ++conj_idx) {
-        const auto& expected_conjunction = expected.conjunctions[conj_idx];
-        const auto& actual_conjunction = actual.conjunctions[conj_idx];
-
-        ASSERT_EQ(expected_conjunction.predicates.size(), actual_conjunction.predicates.size());
-        for (size_t pred_idx = 0; pred_idx < expected_conjunction.predicates.size(); ++pred_idx) {
-            const auto& expected_predicate = expected_conjunction.predicates[pred_idx];
-            const auto& actual_predicate = actual_conjunction.predicates[pred_idx];
-
-            ASSERT_EQ(expected_predicate.raw_filters.size(), actual_predicate.raw_filters.size());
-            for (size_t rf_idx = 0; rf_idx < expected_predicate.raw_filters.size(); ++rf_idx) {
-                ASSERT_EQ(expected_predicate.raw_filters[rf_idx], actual_predicate.raw_filters[rf_idx]);
+    ASSERT_EQ(expected_rf_data.conj_count, actual.conj_count);
+    for (size_t conj_idx = 0; conj_idx < expected_rf_data.conj_count; ++conj_idx) {
+        ASSERT_EQ(expected_rf_data.pred_count[conj_idx], actual.pred_count[conj_idx]);
+        for (size_t pred_idx = 0; pred_idx < expected_rf_data.pred_count[conj_idx]; ++pred_idx) {
+            ASSERT_EQ(expected_rf_data.rf_count[conj_idx][pred_idx], actual.rf_count[conj_idx][pred_idx]);
+            for (size_t rf_idx = 0; rf_idx < expected_rf_data.rf_count[conj_idx][pred_idx]; ++rf_idx) {
+                ASSERT_EQ(expected_rf_data.data[conj_idx][pred_idx][rf_idx], actual.data[conj_idx][pred_idx][rf_idx]);
             }
         }
     }
@@ -197,7 +188,7 @@ TEST(CascadeBuilderTest, GeneratesCorrectNumberOfCascades) {
     }};
     PredicateDisjunction disj{{conj1, conj2}};
 
-    RawFilterDisjunction raw_filter_data = RawFilterQueryGenerator::GenerateRawFilters(disj);
+    RawFilterData raw_filter_data = RawFilterQueryGenerator::GenerateRawFilters(disj);
 
     CascadeBuilder builder(disj, raw_filter_data);
     auto valid_cascades = builder.GenerateValidCascades();
