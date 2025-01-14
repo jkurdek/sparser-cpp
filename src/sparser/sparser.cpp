@@ -37,16 +37,35 @@ std::vector<std::string_view> RawFilterQueryGenerator::GenerateRawFiltersFromPre
     return rawFilters;
 }
 
-EstimationResult Sparser::calibrate(const std::vector<std::string_view>& input, JsonQuery json_query) {
-    auto raw_filter_data = RawFilterQueryGenerator::GenerateRawFilters(json_query.GetDisjunction());
+EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, const JsonQuery& json_query,
+                                    const RawFilterDisjunction& rf_data) {
     auto result = EstimationResult{};
+
+    uint32_t conj_idx = 0;
+    uint32_t pred_idx = 0;
+    uint32_t rf_idx = 0;
 
     assert(input.size() >= kSampleSize);
 
     for (size_t i = 0; i < kSampleSize; i++) {
         auto json_row = input[i];
-        for (size_t rf_idx = 0; rf_idx < kMaxRfs; rf_idx++) {
-            auto rf = raw_filter_data.conjunctions[0].predicates[0].raw_filters[rf_idx];  // TODO: Fix
+        for (size_t t = 0; t < kMaxRfs; t++) {
+            auto rf = rf_data.conjunctions[conj_idx].predicates[pred_idx].raw_filters[rf_idx];
+
+            // TODO: This is a bit ugly, but it works for now
+            rf_idx++;
+            if (rf_idx >= rf_data.conjunctions[conj_idx].predicates[pred_idx].raw_filters.size()) {
+                rf_idx = 0;
+                pred_idx++;
+                if (pred_idx >= rf_data.conjunctions[conj_idx].predicates.size()) {
+                    pred_idx = 0;
+                    conj_idx++;
+                    if (conj_idx >= rf_data.conjunctions.size()) {
+                        break;
+                    }
+                }
+            }
+
             std::cout << "Grepping... : " << rf << "\n";
 
             auto grepStart = benchmark_start();
@@ -94,14 +113,10 @@ std::vector<std::shared_ptr<Node>> CascadeBuilder::HandleFail(const size_t curre
                         auto valid_left_subtrees = HandleFail(current_depth + 1);
                         auto valid_right_subtrees = HandleSuccess(current_depth + 1, conj_idx);
 
-                        for (const auto& left_subtree : valid_left_subtrees) {
-                            for (const auto& right_subtree : valid_right_subtrees) {
-                                auto root = std::make_shared<Node>();
-                                root->conjunction_idx = conj_idx;
-                                root->predicate_idx = pred_idx;
-                                root->raw_filter_idx = rf_idx;
-                                root->left = left_subtree;
-                                root->right = right_subtree;
+                        for (auto left_subtree : valid_left_subtrees) {
+                            for (auto right_subtree : valid_right_subtrees) {
+                                auto root =
+                                    std::make_shared<Node>(conj_idx, pred_idx, rf_idx, left_subtree, right_subtree);
                                 valid_subtrees.emplace_back(root);
                             }
                         }
@@ -137,14 +152,9 @@ std::vector<std::shared_ptr<Node>> CascadeBuilder::HandleSuccess(const size_t cu
                     auto valid_left_subtrees = HandleFail(current_depth + 1);
                     auto valid_right_subtrees = HandleSuccess(current_depth + 1, conj_idx);
 
-                    for (const auto& left_subtree : valid_left_subtrees) {
-                        for (const auto& right_subtree : valid_right_subtrees) {
-                            auto root = std::make_shared<Node>();
-                            root->conjunction_idx = conj_idx;
-                            root->predicate_idx = pred_idx;
-                            root->raw_filter_idx = rf_idx;
-                            root->left = left_subtree;
-                            root->right = right_subtree;
+                    for (auto left_subtree : valid_left_subtrees) {
+                        for (auto right_subtree : valid_right_subtrees) {
+                            auto root = std::make_shared<Node>(conj_idx, pred_idx, rf_idx, left_subtree, right_subtree);
                             valid_subtrees.emplace_back(root);
                         }
                     }

@@ -4,6 +4,7 @@
 #include <array>
 #include <bitset>
 #include <cstddef>
+#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <string_view>
@@ -49,7 +50,8 @@ class Sparser {
     explicit Sparser(std::unique_ptr<JsonQueryDriver>&& json_query_driver = {})
         : json_query_driver_(std::move(json_query_driver)) {}
 
-    EstimationResult calibrate(const std::vector<std::string_view>& input, JsonQuery json_query);
+    EstimationResult Calibrate(const std::vector<std::string_view>& input, const JsonQuery& json_query,
+                               const RawFilterDisjunction& rf_data);
 
    private:
     std::unique_ptr<JsonQueryDriver> json_query_driver_;
@@ -61,6 +63,14 @@ struct Node {
     uint32_t raw_filter_idx;
     std::shared_ptr<Node> left;
     std::shared_ptr<Node> right;
+
+    Node(uint32_t conj_idx, uint32_t pred_idx, uint32_t rf_idx, std::shared_ptr<Node> left_subtree,
+         std::shared_ptr<Node> right_subtree)
+        : conjunction_idx(conj_idx),
+          predicate_idx(pred_idx),
+          raw_filter_idx(rf_idx),
+          left(left_subtree),
+          right(right_subtree) {}
 };
 
 class CascadeBuilder {
