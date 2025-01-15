@@ -23,7 +23,7 @@ constexpr size_t kMaxConj = 10;
 struct EstimationResult {
     std::array<double, kMaxRfsInPred * kMaxPred * kMaxConj> total_rf_runtimes;
     double total_parser_runtime;
-    std::array<std::bitset<kMaxRfsInPred * kMaxPred * kMaxConj>, kSampleSize> bitsets;
+    std::array<std::bitset<kSampleSize>, kMaxRfsInPred * kMaxPred * kMaxConj> bitsets;
 };
 
 struct RawFilterData {
@@ -31,6 +31,10 @@ struct RawFilterData {
     std::array<std::array<size_t, kMaxPred>, kMaxConj> rf_count = {};
     std::array<size_t, kMaxConj> pred_count = {};
     size_t conj_count = 0;
+
+    static size_t GetFlatIdx(size_t conj_idx, size_t pred_idx, size_t rf_idx) {
+        return conj_idx * kMaxPred * kMaxRfsInPred + pred_idx * kMaxRfsInPred + rf_idx;
+    }
 };
 
 class RawFilterQueryGenerator {
@@ -51,20 +55,24 @@ class Sparser {
     std::unique_ptr<JsonQueryDriver> json_query_driver_;
 };
 
+enum class NodeType { INTER, FAIL, PARSE };
+
 struct Node {
     uint32_t conjunction_idx;
     uint32_t predicate_idx;
     uint32_t raw_filter_idx;
     std::shared_ptr<Node> left;
     std::shared_ptr<Node> right;
+    NodeType type;
 
     Node(uint32_t conj_idx, uint32_t pred_idx, uint32_t rf_idx, std::shared_ptr<Node> left_subtree,
-         std::shared_ptr<Node> right_subtree)
+         std::shared_ptr<Node> right_subtree, NodeType type = NodeType::INTER)
         : conjunction_idx(conj_idx),
           predicate_idx(pred_idx),
           raw_filter_idx(rf_idx),
           left(left_subtree),
-          right(right_subtree) {}
+          right(right_subtree),
+          type(type) {}
 };
 
 class CascadeBuilder {
@@ -75,6 +83,8 @@ class CascadeBuilder {
     std::vector<std::shared_ptr<Node>> GenerateValidCascades();
 
    private:
+    std::shared_ptr<Node> fail_node = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::FAIL);
+    std::shared_ptr<Node> parse_node = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::PARSE);
     const PredicateDisjunction& disjunction_;
     const RawFilterData& rf_data_;
     std::bitset<kMaxDepth> used_conjunctions_;
@@ -87,6 +97,20 @@ class CascadeBuilder {
 void PrettyPrint(const std::shared_ptr<Node>& node, const RawFilterData& rf_data, const std::string& prefix = "",
                  bool isLeft = true, std::ostream& os = std::cout);
 
-int EvaluateCascade(std::shared_ptr<Node> cascade, EstimationResult& estimation_result);
+class CascadeEvaluator {
+   public:
+    CascadeEvaluator(const EstimationResult& estimation_result) : estimation_result_(estimation_result) {}
+
+    double EvaluateCascade(std::shared_ptr<Node> cascade);
+
+   private:
+    const EstimationResult& estimation_result_;
+    std::array<double, kMaxRfsInPred * kMaxPred * kMaxConj + 2>
+        rf_probabilities_;  // Changes every call to EvaluateCascade
+    const size_t parse_idx_ = kMaxRfsInPred * kMaxPred * kMaxConj + 1;
+    const size_t fail_idx_ = kMaxRfsInPred * kMaxPred * kMaxConj;
+    void EvaluateFailNodeRec(std::shared_ptr<Node> node, std::bitset<kSampleSize> cumulative_bitset);
+    void EvaluateParseNodeRec(std::shared_ptr<Node> node, std::bitset<kSampleSize> cumulative_bitset);
+};
 
 #endif  // SPARSER_H_

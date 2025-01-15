@@ -1,6 +1,7 @@
 #include "sparser.h"
 
 #include <array>
+#include <bitset>
 #include <cassert>
 #include <cstddef>
 #include <cstdio>
@@ -56,7 +57,7 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
                     auto grepStart = benchmark_start();
                     auto find_result = json_row.find(rf);
 
-                    auto idx = conj_idx * kMaxPred + pred_idx * kMaxRfsInPred + rf_idx;
+                    auto idx = RawFilterData::GetFlatIdx(conj_idx, pred_idx, rf_idx);
 
                     result.total_rf_runtimes[idx] += benchmark_stop(grepStart);
 
@@ -69,6 +70,7 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
                 }
             }
         }
+        result.total_parser_runtime += json_query_driver_->RunQuery(input[i], json_query);
     }
 
     return result;
@@ -80,7 +82,7 @@ std::vector<std::shared_ptr<Node>> CascadeBuilder::HandleFail(const size_t curre
     if (used_conjunctions_.count() == disjunction_.conjunctions.size()) {
         // return vector with a single nullptr
         std::vector<std::shared_ptr<Node>> result;
-        result.emplace_back(nullptr);
+        result.emplace_back(fail_node);
         return result;
     }
 
@@ -125,7 +127,7 @@ std::vector<std::shared_ptr<Node>> CascadeBuilder::HandleSuccess(const size_t cu
     int free = kMaxDepth - current_depth - conj_left;
 
     std::vector<std::shared_ptr<Node>> valid_subtrees;
-    valid_subtrees.emplace_back(nullptr);  // Finishing here is valid
+    valid_subtrees.emplace_back(parse_node);  // Finishing here is valid
 
     if (free > 0) {
         for (size_t pred_idx = 0; pred_idx < rf_data_.pred_count[conj_idx]; pred_idx++) {
@@ -172,4 +174,62 @@ void PrettyPrint(const std::shared_ptr<Node>& node, RawFilterData& rf_data, cons
     // Recursively print left and right subtrees.
     PrettyPrint(node->left, rf_data, newPrefix, true, os);
     PrettyPrint(node->right, rf_data, newPrefix, false, os);
+}
+
+double CascadeEvaluator::EvaluateCascade(std::shared_ptr<Node> node) {
+    rf_probabilities_.fill(0.0);
+    EvaluateParseNodeRec(node, std::bitset<kSampleSize>().set());
+    return 0.0;  // TODO: Calculate the cost using probs
+}
+
+// TODO: Maybe the split is a bit excessive
+void CascadeEvaluator::EvaluateFailNodeRec(std::shared_ptr<Node> node, std::bitset<kSampleSize> cumulative_bitset) {
+    if (!node) {
+        throw std::runtime_error("Node is nullptr");
+    }
+
+    if (node->type == NodeType::PARSE) {
+        throw std::runtime_error("Handling fail should not reach PARSE node");
+    }
+
+    if (node->type == NodeType::FAIL) {
+        rf_probabilities_[fail_idx_] +=
+            static_cast<double>(cumulative_bitset.count()) / static_cast<double>(kSampleSize);
+        return;
+    }
+
+    auto current_rf_idx = RawFilterData::GetFlatIdx(node->conjunction_idx, node->predicate_idx, node->raw_filter_idx);
+    auto bitset = estimation_result_.bitsets[current_rf_idx];
+    bitset.flip();
+
+    rf_probabilities_[current_rf_idx] += static_cast<double>(bitset.count()) / static_cast<double>(kSampleSize);
+    auto new_cumulative_bitset = cumulative_bitset & bitset;
+
+    EvaluateFailNodeRec(node->left, new_cumulative_bitset);
+    EvaluateParseNodeRec(node->right, new_cumulative_bitset);
+}
+
+void CascadeEvaluator::EvaluateParseNodeRec(std::shared_ptr<Node> node, std::bitset<kSampleSize> cumulative_bitset) {
+    if (!node) {
+        throw std::runtime_error("Node is nullptr");
+    }
+
+    if (node->type == NodeType::FAIL) {
+        throw std::runtime_error("Handling parse should not reach FAIL node");
+    }
+
+    if (node->type == NodeType::PARSE) {
+        rf_probabilities_[parse_idx_] +=
+            static_cast<double>(cumulative_bitset.count()) / static_cast<double>(kSampleSize);
+        return;
+    }
+
+    auto current_rf_idx = RawFilterData::GetFlatIdx(node->conjunction_idx, node->predicate_idx, node->raw_filter_idx);
+    auto bitset = estimation_result_.bitsets[current_rf_idx];
+
+    rf_probabilities_[current_rf_idx] += static_cast<double>(bitset.count()) / static_cast<double>(kSampleSize);
+    auto new_cumulative_bitset = cumulative_bitset & bitset;
+
+    EvaluateFailNodeRec(node->left, new_cumulative_bitset);
+    EvaluateParseNodeRec(node->right, new_cumulative_bitset);
 }
