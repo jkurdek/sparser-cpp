@@ -179,7 +179,15 @@ void PrettyPrint(const std::shared_ptr<Node>& node, RawFilterData& rf_data, cons
 double CascadeEvaluator::EvaluateCascade(std::shared_ptr<Node> node) {
     rf_probabilities_.fill(0.0);
     EvaluateParseNodeRec(node, std::bitset<kSampleSize>().set());
-    return 0.0;  // TODO: Calculate the cost using probs
+
+    double cost = 0.0;
+    for (auto idx = 0; idx < kTotalMaxRfs; idx++) {
+        cost += rf_probabilities_[idx] * estimation_result_.total_rf_runtimes[idx];
+    }
+
+    cost += rf_probabilities_[parse_idx_] * estimation_result_.total_parser_runtime;
+
+    return cost;
 }
 
 // TODO: Maybe the split is a bit excessive

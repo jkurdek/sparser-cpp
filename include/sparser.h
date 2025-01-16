@@ -19,11 +19,12 @@ constexpr size_t kMaxDepth = 4;
 constexpr size_t kMaxRfsInPred = 32;
 constexpr size_t kMaxPred = 10;
 constexpr size_t kMaxConj = 10;
+constexpr size_t kTotalMaxRfs = kMaxRfsInPred * kMaxPred * kMaxConj;
 
 struct EstimationResult {
-    std::array<double, kMaxRfsInPred * kMaxPred * kMaxConj> total_rf_runtimes;
+    std::array<double, kTotalMaxRfs> total_rf_runtimes;
     double total_parser_runtime;
-    std::array<std::bitset<kSampleSize>, kMaxRfsInPred * kMaxPred * kMaxConj> bitsets;
+    std::array<std::bitset<kSampleSize>, kTotalMaxRfs> bitsets;
 };
 
 struct RawFilterData {
@@ -107,8 +108,8 @@ class CascadeEvaluator {
     const EstimationResult& estimation_result_;
     std::array<double, kMaxRfsInPred * kMaxPred * kMaxConj + 2>
         rf_probabilities_;  // Changes every call to EvaluateCascade
-    const size_t parse_idx_ = kMaxRfsInPred * kMaxPred * kMaxConj + 1;
-    const size_t fail_idx_ = kMaxRfsInPred * kMaxPred * kMaxConj;
+    const size_t parse_idx_ = kTotalMaxRfs + 1;
+    const size_t fail_idx_ = kTotalMaxRfs;
     void EvaluateFailNodeRec(std::shared_ptr<Node> node, std::bitset<kSampleSize> cumulative_bitset);
     void EvaluateParseNodeRec(std::shared_ptr<Node> node, std::bitset<kSampleSize> cumulative_bitset);
 };
