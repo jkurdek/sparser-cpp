@@ -3,6 +3,9 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <bitset>
+#include <memory>
+#include <random>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -257,4 +260,152 @@ TEST(CascadeBuilder, FailPaths_IncludeAllConjunctions) {
     }
 
     ASSERT_FALSE(found_failure) << "A path ending with fail_node did not include all conjunctions.";
+}
+
+template <std::size_t N>
+void fillArrayWithRandomValues(std::array<double, N>& arr, double minValue, double maxValue) {
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_real_distribution<double> distribution(minValue, maxValue);
+
+    for (auto& element : arr) {
+        element = distribution(generator);
+    }
+}
+
+template <std::size_t M, std::size_t N>
+void fillArrayWithRandomValues(std::array<std::bitset<M>, N>& arr) {
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_int_distribution<unsigned long> distribution(0, (1UL << M) - 1);
+
+    for (auto& bitset : arr) {
+        bitset = std::bitset<M>(distribution(generator));
+    }
+}
+
+TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_1_Conj_1_Rf_ReturnsExpectedEstimation) {
+    /*
+     *        (INTER -> rf_0)
+     *         /       \
+     *      (FAIL)    (PARSE)
+     *
+     */
+
+    double precision = 1e-6;
+    auto estimation_result = EstimationResult{.total_parser_runtime = 100, .total_rf_runtimes = {}, .bitsets = {}};
+
+    fillArrayWithRandomValues(estimation_result.bitsets);
+    fillArrayWithRandomValues(estimation_result.total_rf_runtimes, 5.0, 100.0);
+
+    estimation_result.bitsets[0] = 0b1111000000;
+    estimation_result.total_rf_runtimes[0] = 2.0;
+
+    std::shared_ptr<Node> left = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::FAIL);
+    std::shared_ptr<Node> right = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::PARSE);
+    std::shared_ptr<Node> root = std::make_shared<Node>(0, 0, 0, left, right, NodeType::INTER);
+
+    CascadeEvaluator evaluator(estimation_result);
+    double result = evaluator.EvaluateCascade(root);
+
+    EXPECT_NEAR(1.0, evaluator.rf_probabilities_[0], precision);
+    EXPECT_NEAR(0.4, evaluator.rf_probabilities_[evaluator.parse_idx_], precision);
+    EXPECT_NEAR(0.6, evaluator.rf_probabilities_[evaluator.fail_idx_], precision);
+
+    double expected = 1.0 * 2 + 0.4 * 100;  // RF_0 cost + Total parser cost
+    EXPECT_NEAR(expected, result, precision);
+}
+
+TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_1_Conj_2_Rfs_ReturnsExpectedEstimation) {
+    /*
+     *           (INTER -> rf_0)
+     *              /         \
+     *           (FAIL)     (INTER -> rf_1)
+     *                        /       \
+     *                     (FAIL)    (PARSE)
+     *
+     */
+
+    double precision = 1e-6;
+    auto estimation_result = EstimationResult{
+        .total_parser_runtime = 100,
+        .total_rf_runtimes = {},
+        .bitsets = {},
+    };
+
+    fillArrayWithRandomValues(estimation_result.bitsets);
+    fillArrayWithRandomValues(estimation_result.total_rf_runtimes, 5.0, 100.0);
+    estimation_result.bitsets[0] = 0b1111000000;
+    estimation_result.bitsets[1] = 0b1100000001;
+    estimation_result.total_rf_runtimes[0] = 2.0;
+    estimation_result.total_rf_runtimes[1] = 3.0;
+
+    std::shared_ptr<Node> fail = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::FAIL);
+    std::shared_ptr<Node> parse = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::PARSE);
+    std::shared_ptr<Node> inter = std::make_shared<Node>(0, 0, 1, fail, parse, NodeType::INTER);
+    std::shared_ptr<Node> root = std::make_shared<Node>(0, 0, 0, fail, inter, NodeType::INTER);
+
+    CascadeEvaluator evaluator(estimation_result);
+    double result = evaluator.EvaluateCascade(root);
+
+    EXPECT_NEAR(1.0, evaluator.rf_probabilities_[0], precision);
+    EXPECT_NEAR(0.4, evaluator.rf_probabilities_[1], precision);
+    EXPECT_NEAR(0.2, evaluator.rf_probabilities_[evaluator.parse_idx_], precision);
+    EXPECT_NEAR(0.8, evaluator.rf_probabilities_[evaluator.fail_idx_], precision);
+
+    double expected = 1.0 * 2 + 0.4 * 3 + 0.2 * 100;  // RF_0 cost + RF_1 cost + Total parser cost
+    EXPECT_NEAR(expected, result, precision);
+}
+
+TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_2_conj_2_preds_2_rfs_ReturnsExpectedEstimation) {
+    /*
+     *                   (1.0.1)
+     *                 /        \
+     *           (0.0.0)         (1.1.1)
+     *           /       \       /       \
+     *        (F)   (0.1.2)    (0.0.0)   (PARSE)
+     *               /    \     /   \
+     *              (F)  (P)  (F)  (P)
+     *
+     */
+
+    double precision = 1e-6;
+    auto estimation_result = EstimationResult{.total_parser_runtime = 100, .total_rf_runtimes = {}, .bitsets = {}};
+    fillArrayWithRandomValues(estimation_result.bitsets);
+    fillArrayWithRandomValues(estimation_result.total_rf_runtimes, 5.0, 100.0);
+
+    estimation_result.total_rf_runtimes[RawFilterData::GetFlatIdx(1, 0, 1)] = 3.0;
+    estimation_result.total_rf_runtimes[RawFilterData::GetFlatIdx(1, 1, 1)] = 5.0;
+    estimation_result.total_rf_runtimes[RawFilterData::GetFlatIdx(0, 0, 0)] = 7.0;
+    estimation_result.total_rf_runtimes[RawFilterData::GetFlatIdx(0, 1, 2)] = 11.0;
+
+    estimation_result.bitsets[RawFilterData::GetFlatIdx(1, 0, 1)] = 0b0100101010;
+    estimation_result.bitsets[RawFilterData::GetFlatIdx(1, 1, 1)] = 0b1100111101;
+    estimation_result.bitsets[RawFilterData::GetFlatIdx(0, 0, 0)] = 0b1011100110;
+    estimation_result.bitsets[RawFilterData::GetFlatIdx(0, 1, 2)] = 0b1110000001;
+
+    std::shared_ptr<Node> fail = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::FAIL);
+    std::shared_ptr<Node> parse = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::PARSE);
+
+    std::shared_ptr<Node> node_0_0_0_right = std::make_shared<Node>(0, 0, 0, fail, parse, NodeType::INTER);
+    std::shared_ptr<Node> node_1_1_1_right = std::make_shared<Node>(1, 1, 1, node_0_0_0_right, parse, NodeType::INTER);
+
+    std::shared_ptr<Node> node_0_1_2_left = std::make_shared<Node>(0, 1, 2, fail, parse, NodeType::INTER);
+    std::shared_ptr<Node> node_0_0_0_left = std::make_shared<Node>(0, 0, 0, fail, node_0_1_2_left, NodeType::INTER);
+
+    std::shared_ptr<Node> node_1_0_1_root =
+        std::make_shared<Node>(1, 0, 1, node_0_0_0_left, node_1_1_1_right, NodeType::INTER);
+
+    CascadeEvaluator evaluator(estimation_result);
+    double result = evaluator.EvaluateCascade(node_1_0_1_root);
+
+    EXPECT_NEAR(1.0, evaluator.rf_probabilities_[RawFilterData::GetFlatIdx(1, 0, 1)], precision);
+    EXPECT_NEAR(0.4, evaluator.rf_probabilities_[RawFilterData::GetFlatIdx(1, 1, 1)], precision);
+    EXPECT_NEAR(0.7, evaluator.rf_probabilities_[RawFilterData::GetFlatIdx(0, 0, 0)], precision);
+    EXPECT_NEAR(0.4, evaluator.rf_probabilities_[RawFilterData::GetFlatIdx(0, 1, 2)], precision);
+    EXPECT_NEAR(0.6, evaluator.rf_probabilities_[evaluator.parse_idx_], precision);
+    EXPECT_NEAR(0.4, evaluator.rf_probabilities_[evaluator.fail_idx_], precision);
+
+    double expected = 1.0 * 3 + 0.4 * 5 + 0.7 * 7 + 0.4 * 11 + 0.6 * 100;
+    EXPECT_NEAR(expected, result, precision);
 }

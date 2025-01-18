@@ -178,7 +178,7 @@ void PrettyPrint(const std::shared_ptr<Node>& node, RawFilterData& rf_data, cons
 
 double CascadeEvaluator::EvaluateCascade(std::shared_ptr<Node> node) {
     rf_probabilities_.fill(0.0);
-    EvaluateParseNodeRec(node, std::bitset<kSampleSize>().set());
+    EvaluateNodeRec(node, std::bitset<kSampleSize>().set());
 
     double cost = 0.0;
     for (size_t idx = 0; idx < kTotalMaxRfs; idx++) {
@@ -190,40 +190,15 @@ double CascadeEvaluator::EvaluateCascade(std::shared_ptr<Node> node) {
     return cost;
 }
 
-// TODO: Maybe the split is a bit excessive
-void CascadeEvaluator::EvaluateFailNodeRec(std::shared_ptr<Node> node, std::bitset<kSampleSize> cumulative_bitset) {
+void CascadeEvaluator::EvaluateNodeRec(std::shared_ptr<Node> node, std::bitset<kSampleSize> cumulative_bitset) {
     if (!node) {
         throw std::runtime_error("Node is nullptr");
-    }
-
-    if (node->type == NodeType::PARSE) {
-        throw std::runtime_error("Handling fail should not reach PARSE node");
     }
 
     if (node->type == NodeType::FAIL) {
         rf_probabilities_[fail_idx_] +=
             static_cast<double>(cumulative_bitset.count()) / static_cast<double>(kSampleSize);
         return;
-    }
-
-    auto current_rf_idx = RawFilterData::GetFlatIdx(node->conjunction_idx, node->predicate_idx, node->raw_filter_idx);
-    auto bitset = estimation_result_.bitsets[current_rf_idx];
-    bitset.flip();
-
-    rf_probabilities_[current_rf_idx] += static_cast<double>(bitset.count()) / static_cast<double>(kSampleSize);
-    auto new_cumulative_bitset = cumulative_bitset & bitset;
-
-    EvaluateFailNodeRec(node->left, new_cumulative_bitset);
-    EvaluateParseNodeRec(node->right, new_cumulative_bitset);
-}
-
-void CascadeEvaluator::EvaluateParseNodeRec(std::shared_ptr<Node> node, std::bitset<kSampleSize> cumulative_bitset) {
-    if (!node) {
-        throw std::runtime_error("Node is nullptr");
-    }
-
-    if (node->type == NodeType::FAIL) {
-        throw std::runtime_error("Handling parse should not reach FAIL node");
     }
 
     if (node->type == NodeType::PARSE) {
@@ -233,11 +208,11 @@ void CascadeEvaluator::EvaluateParseNodeRec(std::shared_ptr<Node> node, std::bit
     }
 
     auto current_rf_idx = RawFilterData::GetFlatIdx(node->conjunction_idx, node->predicate_idx, node->raw_filter_idx);
+    rf_probabilities_[current_rf_idx] +=
+        static_cast<double>(cumulative_bitset.count()) / static_cast<double>(kSampleSize);
+
     auto bitset = estimation_result_.bitsets[current_rf_idx];
 
-    rf_probabilities_[current_rf_idx] += static_cast<double>(bitset.count()) / static_cast<double>(kSampleSize);
-    auto new_cumulative_bitset = cumulative_bitset & bitset;
-
-    EvaluateFailNodeRec(node->left, new_cumulative_bitset);
-    EvaluateParseNodeRec(node->right, new_cumulative_bitset);
+    EvaluateNodeRec(node->left, cumulative_bitset & (~bitset));
+    EvaluateNodeRec(node->right, (cumulative_bitset & bitset));
 }

@@ -103,15 +103,13 @@ class CascadeEvaluator {
     CascadeEvaluator(const EstimationResult& estimation_result) : estimation_result_(estimation_result) {}
 
     double EvaluateCascade(std::shared_ptr<Node> cascade);
+    std::array<double, kTotalMaxRfs + 2> rf_probabilities_;  // Changes every call to EvaluateCascade
+    const size_t parse_idx_ = kTotalMaxRfs + 1;
+    const size_t fail_idx_ = kTotalMaxRfs;
 
    private:
     const EstimationResult& estimation_result_;
-    std::array<double, kMaxRfsInPred * kMaxPred * kMaxConj + 2>
-        rf_probabilities_;  // Changes every call to EvaluateCascade
-    const size_t parse_idx_ = kTotalMaxRfs + 1;
-    const size_t fail_idx_ = kTotalMaxRfs;
-    void EvaluateFailNodeRec(std::shared_ptr<Node> node, std::bitset<kSampleSize> cumulative_bitset);
-    void EvaluateParseNodeRec(std::shared_ptr<Node> node, std::bitset<kSampleSize> cumulative_bitset);
+    void EvaluateNodeRec(std::shared_ptr<Node> node, std::bitset<kSampleSize> cumulative_bitset);
 };
 
 #endif  // SPARSER_H_
