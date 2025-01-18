@@ -37,7 +37,7 @@ std::ostream& operator<<(std::ostream& os, const JsonQuery& query) {
 }
 
 void RapidJsonFacade::Parse(std::string_view jsonStr) {
-    rapidjson::ParseResult ok = doc_.Parse(jsonStr.data());
+    rapidjson::ParseResult ok = doc_.Parse(jsonStr.data(), jsonStr.size());
     if (!ok || !doc_.IsObject()) {
         throw std::runtime_error("Failed to parse JSON string");
     }

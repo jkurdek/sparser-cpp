@@ -1,37 +1,9 @@
-#include <exception>
-#include <fstream>
-#include <iostream>
 #include <span>
-#include <stdexcept>
-#include <string>
-#include <string_view>
 
-constexpr double GIGABYTE = 1e9;
+#include "json_facade.h"
+#include "sparser.h"
 
-/**
- * Reads the contents of a file into a dynamically allocated buffer.
- *
- * @param filename The name of the file to be read.
- * @return A string containing the contents of the file.
- */
-std::string readFile(std::string filename) {
-    std::ifstream file(filename, std::ios::binary | std::ios::ate);
-
-    if (!file) {
-        throw std::runtime_error("Error opening file: " + std::string(filename));
-    }
-
-    auto fileSize = file.tellg();
-    file.seekg(0, std::ios::beg);
-
-    std::string buffer(fileSize, '\0');
-
-    if (!file.read(buffer.data(), fileSize)) {
-        throw std::runtime_error("Error reading file: " + std::string(filename));
-    }
-
-    return buffer;
-}
+// constexpr double GIGABYTE = 1e9;
 
 int main(int argc, char* argv[]) {
     try {
@@ -44,13 +16,14 @@ int main(int argc, char* argv[]) {
 
         const std::string filename = args[1];
 
-        std::cout << "Reading file: " << filename << "\n";
-        auto buffer = readFile(filename);
-        std::cout << "Done reading! File size: " << static_cast<double>(buffer.size()) / GIGABYTE << " GB" << "\n";
+        Predicate pred1{.key = "name", .value = "Trump"};
 
-        if (buffer.empty()) {
-            return 1;
-        }
+        PredicateConjunction conj1{{pred1}};
+        PredicateDisjunction disj{{conj1}};
+
+        auto json_query_driver = new JsonQueryDriver(std::make_unique<RapidJsonFacade>());
+        auto sparser = Sparser(std::unique_ptr<JsonQueryDriver>(json_query_driver));
+        sparser.Run(filename, JsonQuery(disj));
 
     } catch (const std::exception& e) {
         std::cerr << "Exception caught: " << e.what() << "\n";

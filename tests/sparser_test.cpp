@@ -374,15 +374,15 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_2_conj_2_preds_2_rfs_Returns
     fillArrayWithRandomValues(estimation_result.bitsets);
     fillArrayWithRandomValues(estimation_result.total_rf_runtimes, 5.0, 100.0);
 
-    estimation_result.total_rf_runtimes[RawFilterData::GetFlatIdx(1, 0, 1)] = 3.0;
-    estimation_result.total_rf_runtimes[RawFilterData::GetFlatIdx(1, 1, 1)] = 5.0;
-    estimation_result.total_rf_runtimes[RawFilterData::GetFlatIdx(0, 0, 0)] = 7.0;
-    estimation_result.total_rf_runtimes[RawFilterData::GetFlatIdx(0, 1, 2)] = 11.0;
+    estimation_result.total_rf_runtimes[GetFlatIdx(1, 0, 1)] = 3.0;
+    estimation_result.total_rf_runtimes[GetFlatIdx(1, 1, 1)] = 5.0;
+    estimation_result.total_rf_runtimes[GetFlatIdx(0, 0, 0)] = 7.0;
+    estimation_result.total_rf_runtimes[GetFlatIdx(0, 1, 2)] = 11.0;
 
-    estimation_result.bitsets[RawFilterData::GetFlatIdx(1, 0, 1)] = 0b0100101010;
-    estimation_result.bitsets[RawFilterData::GetFlatIdx(1, 1, 1)] = 0b1100111101;
-    estimation_result.bitsets[RawFilterData::GetFlatIdx(0, 0, 0)] = 0b1011100110;
-    estimation_result.bitsets[RawFilterData::GetFlatIdx(0, 1, 2)] = 0b1110000001;
+    estimation_result.bitsets[GetFlatIdx(1, 0, 1)] = 0b0100101010;
+    estimation_result.bitsets[GetFlatIdx(1, 1, 1)] = 0b1100111101;
+    estimation_result.bitsets[GetFlatIdx(0, 0, 0)] = 0b1011100110;
+    estimation_result.bitsets[GetFlatIdx(0, 1, 2)] = 0b1110000001;
 
     std::shared_ptr<Node> fail = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::FAIL);
     std::shared_ptr<Node> parse = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::PARSE);
@@ -399,10 +399,10 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_2_conj_2_preds_2_rfs_Returns
     CascadeEvaluator evaluator(estimation_result);
     double result = evaluator.EvaluateCascade(node_1_0_1_root);
 
-    EXPECT_NEAR(1.0, evaluator.rf_probabilities_[RawFilterData::GetFlatIdx(1, 0, 1)], precision);
-    EXPECT_NEAR(0.4, evaluator.rf_probabilities_[RawFilterData::GetFlatIdx(1, 1, 1)], precision);
-    EXPECT_NEAR(0.7, evaluator.rf_probabilities_[RawFilterData::GetFlatIdx(0, 0, 0)], precision);
-    EXPECT_NEAR(0.4, evaluator.rf_probabilities_[RawFilterData::GetFlatIdx(0, 1, 2)], precision);
+    EXPECT_NEAR(1.0, evaluator.rf_probabilities_[GetFlatIdx(1, 0, 1)], precision);
+    EXPECT_NEAR(0.4, evaluator.rf_probabilities_[GetFlatIdx(1, 1, 1)], precision);
+    EXPECT_NEAR(0.7, evaluator.rf_probabilities_[GetFlatIdx(0, 0, 0)], precision);
+    EXPECT_NEAR(0.4, evaluator.rf_probabilities_[GetFlatIdx(0, 1, 2)], precision);
     EXPECT_NEAR(0.6, evaluator.rf_probabilities_[evaluator.parse_idx_], precision);
     EXPECT_NEAR(0.4, evaluator.rf_probabilities_[evaluator.fail_idx_], precision);
 
