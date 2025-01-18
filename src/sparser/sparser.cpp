@@ -102,8 +102,8 @@ std::vector<std::shared_ptr<Node>> CascadeBuilder::HandleFail(const size_t curre
 
                         for (auto left_subtree : valid_left_subtrees) {
                             for (auto right_subtree : valid_right_subtrees) {
-                                auto root =
-                                    std::make_shared<Node>(conj_idx, pred_idx, rf_idx, left_subtree, right_subtree);
+                                auto root = std::make_shared<Node>(conj_idx, pred_idx, rf_idx, left_subtree,
+                                                                   right_subtree, NodeType::INTER);
                                 valid_subtrees.emplace_back(root);
                             }
                         }
@@ -140,7 +140,8 @@ std::vector<std::shared_ptr<Node>> CascadeBuilder::HandleSuccess(const size_t cu
 
                     for (auto left_subtree : valid_left_subtrees) {
                         for (auto right_subtree : valid_right_subtrees) {
-                            auto root = std::make_shared<Node>(conj_idx, pred_idx, rf_idx, left_subtree, right_subtree);
+                            auto root = std::make_shared<Node>(conj_idx, pred_idx, rf_idx, left_subtree, right_subtree,
+                                                               NodeType::INTER);
                             valid_subtrees.emplace_back(root);
                         }
                     }
