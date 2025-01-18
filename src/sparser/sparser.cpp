@@ -181,7 +181,7 @@ double CascadeEvaluator::EvaluateCascade(std::shared_ptr<Node> node) {
     EvaluateParseNodeRec(node, std::bitset<kSampleSize>().set());
 
     double cost = 0.0;
-    for (auto idx = 0; idx < kTotalMaxRfs; idx++) {
+    for (size_t idx = 0; idx < kTotalMaxRfs; idx++) {
         cost += rf_probabilities_[idx] * estimation_result_.total_rf_runtimes[idx];
     }
 

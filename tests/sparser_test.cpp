@@ -9,7 +9,7 @@
 
 #include "json_facade.h"
 
-TEST(SparserQueryTest, ToString) {
+TEST(JsonQuery, ToString_ReturnsCorrectFormat) {
     const Predicate pred_1{.key = "name", .value = "John Doe"};
     const Predicate pred_2{.key = "age", .value = "30"};
     const Predicate pred_3{.key = "city", .value = "New York"};
@@ -27,7 +27,7 @@ TEST(SparserQueryTest, ToString) {
     ASSERT_EQ(expected, actual);
 }
 
-TEST(SparserQueryTest, GenerateRawFiltersForQueryTests) {
+TEST(RawFilterQueryGenerator, GenerateRawFilters_ProperlyGeneratesRawFilters) {
     const Predicate pred_1{.key = "title", .value = "Lord of the Rings"};
     const Predicate pred_2{.key = "title", .value = "Harry Potter"};
     const Predicate pred_3{.key = "title", .value = "The Hobbit"};
@@ -73,7 +73,7 @@ TEST(SparserQueryTest, GenerateRawFiltersForQueryTests) {
     }
 }
 
-TEST(SparserQueryTest, GenerateRawFiltersForSinglePredicate) {
+TEST(RawFilterQueryGenerator, GenerateRawFilters_GenerateRawFiltersForSinglePredicate) {
     const Predicate pred_1{.key = "title", .value = "Harry Potter"};
 
     const std::vector<std::string_view> expected{
@@ -88,7 +88,7 @@ TEST(SparserQueryTest, GenerateRawFiltersForSinglePredicate) {
     }
 }
 
-TEST(RapidJsonFacadeTest, ParseValidJson) {
+TEST(RapidJsonFacade, Parse_ValidJson_SuccessfulParsing) {
     RapidJsonFacade facade;
     std::string_view validJson = R"({"name":"John","age":"30"})";
     facade.Parse(validJson);
@@ -102,14 +102,14 @@ TEST(RapidJsonFacadeTest, ParseValidJson) {
     EXPECT_EQ(*ageValue, "30");
 }
 
-TEST(RapidJsonFacadeTest, ParseInvalidJson) {
+TEST(RapidJsonFacade, Parse_InvalidJson_ThrowsException) {
     RapidJsonFacade facade;
     std::string_view invalidJson = R"({invalid json})";  // Missing quotes, braces, etc.
     EXPECT_ANY_THROW(facade.Parse(invalidJson)) << "Should fail to parse invalid JSON";
     EXPECT_FALSE(facade.GetString("randomKey").has_value());
 }
 
-TEST(RapidJsonFacadeTest, HasKeyAndGetString) {
+TEST(RapidJsonFacade, GetString_ExistingAndMissingKeys_BehavesCorrectly) {
     RapidJsonFacade facade;
     std::string_view json = R"({"fruit":"apple"})";
     facade.Parse(json);
@@ -122,7 +122,7 @@ TEST(RapidJsonFacadeTest, HasKeyAndGetString) {
     EXPECT_FALSE(colorVal.has_value());
 }
 
-TEST(JsonQueryDriverTest, RunQuery_AllPredicatesMatch) {
+TEST(JsonQueryDriver, RunQuery_AllPredicatesMatch_ReturnsTrue) {
     auto facade = std::make_unique<RapidJsonFacade>();
     JsonQueryDriver driver(std::move(facade));
 
@@ -141,7 +141,7 @@ TEST(JsonQueryDriverTest, RunQuery_AllPredicatesMatch) {
     EXPECT_TRUE(result) << "Expected the query to match since the JSON satisfies conjunction 1.";
 }
 
-TEST(JsonQueryDriverTest, RunQuery_NoPredicatesMatch) {
+TEST(JsonQueryDriver, RunQuery_NoPredicatesMatch_ReturnsFalse) {
     auto facade = std::make_unique<RapidJsonFacade>();
     JsonQueryDriver driver(std::move(facade));
 
@@ -160,7 +160,7 @@ TEST(JsonQueryDriverTest, RunQuery_NoPredicatesMatch) {
     EXPECT_FALSE(result) << "Expected the query NOT to match since none of the predicates match.";
 }
 
-TEST(JsonQueryDriverTest, RunQuery_PartialConjunctionFail) {
+TEST(JsonQueryDriver, RunQuery_PartialConjunctionMismatch_ReturnsFalse) {
     auto facade = std::make_unique<RapidJsonFacade>();
     JsonQueryDriver driver(std::move(facade));
 
@@ -177,7 +177,7 @@ TEST(JsonQueryDriverTest, RunQuery_PartialConjunctionFail) {
     EXPECT_FALSE(result) << "Expected the query NOT to match because the age mismatch fails the conjunction.";
 }
 
-TEST(CascadeBuilderTest, GeneratesCorrectNumberOfCascades) {
+TEST(CascadeBuilder, GenerateValidCascades_ValidDisjunction_ReturnsExpectedCount) {
     Predicate pred1{.key = "name", .value = "John"};
     Predicate pred2{.key = "region", .value = "EMEA"};
     Predicate pred3{.key = "name", .value = "Jane"};
@@ -194,4 +194,67 @@ TEST(CascadeBuilderTest, GeneratesCorrectNumberOfCascades) {
     auto valid_cascades = builder.GenerateValidCascades();
 
     ASSERT_EQ(8, valid_cascades.size());
+}
+
+void ValidateFailNodePaths(const std::shared_ptr<Node>& root, std::vector<bool>& conj_used,
+                           const size_t total_conjunctions, bool& test_failure) {
+    if (!root) {
+        throw std::runtime_error("Root node is null.");
+    }
+
+    if (root->type == NodeType::INTER) {
+        if (root->conjunction_idx < total_conjunctions) {
+            conj_used[root->conjunction_idx] = true;
+        }
+    }
+
+    if (root->type == NodeType::FAIL) {
+        for (bool used : conj_used) {
+            if (!used) {
+                test_failure = true;
+                return;
+            }
+        }
+    }
+
+    if (root->left) {
+        std::vector<bool> conj_used_snapshot = conj_used;
+        ValidateFailNodePaths(root->left, conj_used_snapshot, total_conjunctions, test_failure);
+    }
+
+    if (root->right) {
+        std::vector<bool> conj_used_snapshot = conj_used;
+        ValidateFailNodePaths(root->right, conj_used_snapshot, total_conjunctions, test_failure);
+    }
+}
+
+TEST(CascadeBuilder, FailPaths_IncludeAllConjunctions) {
+    Predicate pred1{.key = "name", .value = "John"};
+    Predicate pred2{.key = "region", .value = "EMEA"};
+    Predicate pred3{.key = "name", .value = "Jane"};
+
+    PredicateConjunction conj1{{pred1, pred2}};
+    PredicateConjunction conj2{{pred3}};
+    PredicateDisjunction disj{{conj1, conj2}};
+
+    RawFilterData raw_filter_data = RawFilterQueryGenerator::GenerateRawFilters(disj);
+
+    CascadeBuilder builder(disj, raw_filter_data);
+    auto valid_cascades = builder.GenerateValidCascades();
+
+    const size_t total_conjunctions = disj.conjunctions.size();
+
+    bool found_failure = false;
+    for (auto& root : valid_cascades) {
+        std::vector<bool> conj_used(total_conjunctions, false);
+
+        ValidateFailNodePaths(root, conj_used, total_conjunctions, found_failure);
+
+        if (found_failure) {
+            // PrettyPrint(root, raw_filter_data); // TODO: Fix PrettyPrint
+            break;
+        }
+    }
+
+    ASSERT_FALSE(found_failure) << "A path ending with fail_node did not include all conjunctions.";
 }
