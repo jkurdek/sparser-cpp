@@ -21,12 +21,12 @@
       "binaryDir": "${sourceDir}/build"
     },
     {
-      "name": "macos-arm",
+      "name": "macos-arm-base",
+      "hidden": true,
       "inherits": "base",
       "description": "Preset for ARM macOS",
       "generator": "Ninja",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_SYSTEM_NAME": "Darwin",
         "VCPKG_TARGET_TRIPLET": "arm64-osx"
       }
@@ -46,8 +46,16 @@
       }
     },
     {
+      "name": "macos-arm-release",
+      "inherits": "macos-arm-base",
+      "description": "Release preset for ARM macOS",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
       "name": "macos-arm-debug",
-      "inherits": "macos-arm",
+      "inherits": "macos-arm-base",
       "description": "Debug preset for ARM macOS",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
