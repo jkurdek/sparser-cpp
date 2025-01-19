@@ -254,7 +254,7 @@ TEST(CascadeBuilder, FailPaths_IncludeAllConjunctions) {
         ValidateFailNodePaths(root, conj_used, total_conjunctions, found_failure);
 
         if (found_failure) {
-            // PrettyPrint(root, raw_filter_data); // TODO: Fix PrettyPrint
+            PrettyPrint(root, raw_filter_data);
             break;
         }
     }
@@ -263,7 +263,7 @@ TEST(CascadeBuilder, FailPaths_IncludeAllConjunctions) {
 }
 
 template <std::size_t N>
-void fillArrayWithRandomValues(std::array<double, N>& arr, double minValue, double maxValue) {
+void fillArrayWithRandomValues(std::array<unsigned long long, N>& arr, double minValue, double maxValue) {
     std::random_device rd;
     std::mt19937 generator(rd());
     std::uniform_real_distribution<double> distribution(minValue, maxValue);

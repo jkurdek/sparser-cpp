@@ -14,6 +14,7 @@
 
 #include "common.h"
 #include "json_facade.h"
+#include "rdtsc.h"
 
 RawFilterData RawFilterQueryGenerator::GenerateRawFilters(const PredicateDisjunction& disjunction) {
     RawFilterData rf_data;
@@ -46,7 +47,6 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
                                     const RawFilterData& rf_data) {
     auto result = EstimationResult{};
 
-    std::cout << input.size() << "\n";
     assert(input.size() >= kSampleSize);
 
     for (size_t i = 0; i < kSampleSize; i++) {
@@ -61,9 +61,9 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
 
                     auto idx = GetFlatIdx(conj_idx, pred_idx, rf_idx);
 
-                    auto grepStart = benchmark_start();
+                    auto grepStart = rdtsc();
                     auto find_result = json_row.find(rf);
-                    result.total_rf_runtimes[idx] += benchmark_stop(grepStart);
+                    result.total_rf_runtimes[idx] += (rdtsc() - grepStart);
 
                     if (find_result != std::string_view::npos) {
 #ifndef NDEBUG
@@ -78,7 +78,10 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
                 }
             }
         }
-        result.total_parser_runtime += json_query_driver_->RunQuery(input[i], json_query);
+
+        auto json_query_start = rdtsc();
+        json_query_driver_->RunQuery(input[i], json_query);
+        result.total_parser_runtime += (rdtsc() - json_query_start);
     }
 
     return result;
@@ -163,11 +166,21 @@ std::vector<std::shared_ptr<Node>> CascadeBuilder::HandleSuccess(const size_t cu
     return valid_subtrees;
 }
 
-void PrettyPrint(const std::shared_ptr<Node>& node, RawFilterData& rf_data, const std::string& prefix, bool isLeft,
-                 std::ostream& os) {
+void PrettyPrint(const std::shared_ptr<Node>& node, const RawFilterData& rf_data, const std::string& prefix,
+                 bool isLeft, std::ostream& os) {
     if (!node) {
         // Print "NULL" or some placeholder for an empty child.
         os << prefix << (isLeft ? "├── " : "└── ") << "NULL\n";
+        return;
+    }
+
+    if (node->type == NodeType::FAIL) {
+        os << prefix << (isLeft ? "├── " : "└── ") << "FAIL\n";
+        return;
+    }
+
+    if (node->type == NodeType::PARSE) {
+        os << prefix << (isLeft ? "├── " : "└── ") << "PARSE\n";
         return;
     }
 
@@ -294,8 +307,10 @@ void Sparser::Run(const std::string& input_path, const JsonQuery& json_query) {
         }
     }
 
-    std::cout << "Best cascade cost: " << min_cost << "\n";
-    // PrettyPrint(best_cascade, rf_data);
+    std::cout << "Best cascade cost: " << min_cost << "\n\n";
+    std::cout << "Best cascade:\n";
+    PrettyPrint(best_cascade, rf_data);
+    std::cout << "\n";
 
     SearchCascade(sparser_input, json_query, rf_data, best_cascade);
 

@@ -28,8 +28,8 @@ class InputReader {
 };
 
 struct EstimationResult {
-    double total_parser_runtime;
-    std::array<double, kTotalMaxRfs> total_rf_runtimes;
+    unsigned long long total_parser_runtime;
+    std::array<unsigned long long, kTotalMaxRfs> total_rf_runtimes;
     std::array<std::bitset<kSampleSize>, kTotalMaxRfs> bitsets;
 };
 
@@ -102,9 +102,6 @@ class CascadeBuilder {
     std::vector<std::shared_ptr<Node>> HandleSuccess(const size_t current_depth, const size_t conjunction_idx);
 };
 
-void PrettyPrint(const std::shared_ptr<Node>& node, const RawFilterData& rf_data, const std::string& prefix = "",
-                 bool isLeft = true, std::ostream& os = std::cout);
-
 class CascadeEvaluator {
    public:
     CascadeEvaluator(const EstimationResult& estimation_result) : estimation_result_(estimation_result) {}
@@ -122,5 +119,8 @@ class CascadeEvaluator {
 static inline size_t GetFlatIdx(size_t conj_idx, size_t pred_idx, size_t rf_idx) {
     return conj_idx * kMaxPred * kMaxRfsInPred + pred_idx * kMaxRfsInPred + rf_idx;
 }
+
+void PrettyPrint(const std::shared_ptr<Node>& node, const RawFilterData& rf_data, const std::string& prefix = "",
+                 bool isLeft = true, std::ostream& os = std::cout);
 
 #endif  // SPARSER_H_
