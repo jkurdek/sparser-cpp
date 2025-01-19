@@ -277,10 +277,13 @@ template <std::size_t M, std::size_t N>
 void fillArrayWithRandomValues(std::array<std::bitset<M>, N>& arr) {
     std::random_device rd;
     std::mt19937 generator(rd());
-    std::uniform_int_distribution<unsigned long> distribution(0, (1UL << M) - 1);
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dist(0, 1);
 
-    for (auto& bitset : arr) {
-        bitset = std::bitset<M>(distribution(generator));
+    for (auto& element : arr) {
+        for (size_t i = 0; i < M; ++i) {
+            element[i] = dist(gen);
+        }
     }
 }
 

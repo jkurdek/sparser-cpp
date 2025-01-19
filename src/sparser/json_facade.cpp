@@ -67,7 +67,7 @@ bool JsonQueryDriver::RunQuery(std::string_view buffer, const JsonQuery& query) 
 
         for (const auto& predicate : conjunction.predicates) {
             auto value = json_facade_->GetString(predicate.key);
-            if (!value.has_value() || value.value() != predicate.value) {
+            if (!value.has_value() || !value.value().contains(predicate.value)) {
                 all_predicates_satisfied = false;
                 break;
             }

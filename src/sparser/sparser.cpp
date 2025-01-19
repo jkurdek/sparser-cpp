@@ -55,7 +55,9 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
             for (uint32_t pred_idx = 0; pred_idx < rf_data.pred_count[conj_idx]; pred_idx++) {
                 for (uint32_t rf_idx = 0; rf_idx < rf_data.rf_count[conj_idx][pred_idx]; rf_idx++) {
                     auto rf = rf_data.data[conj_idx][pred_idx][rf_idx];
+#ifndef NDEBUG
                     std::cout << "Grepping... : " << rf << "\n";
+#endif
 
                     auto idx = GetFlatIdx(conj_idx, pred_idx, rf_idx);
 
@@ -64,10 +66,14 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
                     result.total_rf_runtimes[idx] += benchmark_stop(grepStart);
 
                     if (find_result != std::string_view::npos) {
+#ifndef NDEBUG
                         std::cout << "Found: " << rf << "\n";
+#endif
                         result.bitsets[idx].set(i);
                     } else {
+#ifndef NDEBUG
                         std::cout << "Not found: " << rf << "\n";
+#endif
                     }
                 }
             }
@@ -254,7 +260,9 @@ std::vector<std::string_view> InputReader::ReadRecords(const std::string& input)
 
     // Add the last segment if not empty
     if (start < input.size()) {
+#ifndef NDEBUG
         std::cout << "Adding last segment" << std::string_view(&input[start], input.size() - start) << "\n";
+#endif
         records.emplace_back(&input[start], input.size() - start);
     }
 
@@ -264,12 +272,12 @@ std::vector<std::string_view> InputReader::ReadRecords(const std::string& input)
 void Sparser::Run(const std::string& input_path, const JsonQuery& json_query) {
     auto input_reader = InputReader();
     auto file_data = input_reader.ReadFile(input_path);
-    auto input = input_reader.ReadRecords(file_data);
-
     auto sparser_time_start = benchmark_start();
+    auto sparser_input = input_reader.ReadRecords(file_data);
+
     auto disjunction = json_query.GetDisjunction();
     auto rf_data = RawFilterQueryGenerator::GenerateRawFilters(disjunction);
-    auto estimation_result = Calibrate(input, json_query, rf_data);
+    auto estimation_result = Calibrate(sparser_input, json_query, rf_data);
 
     auto cascade_builder = CascadeBuilder(disjunction, rf_data);
     auto valid_cascades = cascade_builder.GenerateValidCascades();
@@ -289,13 +297,15 @@ void Sparser::Run(const std::string& input_path, const JsonQuery& json_query) {
     std::cout << "Best cascade cost: " << min_cost << "\n";
     // PrettyPrint(best_cascade, rf_data);
 
-    SearchCascade(input, json_query, rf_data, best_cascade);
+    SearchCascade(sparser_input, json_query, rf_data, best_cascade);
 
-    std::cout << "Total time: " << benchmark_stop(sparser_time_start) << " ms\n";
+    std::cout << "Total time: " << benchmark_stop(sparser_time_start) << " s\n";
 
     auto naive_time_start = benchmark_start();
-    SearchNaive(input, json_query);
-    std::cout << "Naive total time: " << benchmark_stop(naive_time_start) << " ms\n";
+    auto naive_input = input_reader.ReadRecords(file_data);
+
+    SearchNaive(naive_input, json_query);
+    std::cout << "Naive total time: " << benchmark_stop(naive_time_start) << " s\n";
 }
 
 void Sparser::SearchCascade(const std::vector<std::string_view>& input, const JsonQuery& json_query,
