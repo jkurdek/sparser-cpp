@@ -255,6 +255,8 @@ std::string InputReader::ReadFile(const std::string& filename) {
         throw std::runtime_error("Error reading file: " + std::string(filename));
     }
 
+    std::cout << "Read " << fileSize / 1e9 << " GB from " << filename << "\n";
+
     return buffer;
 }
 
@@ -283,6 +285,9 @@ std::vector<std::string_view> InputReader::ReadRecords(const std::string& input)
 }
 
 void Sparser::Run(const std::string& input_path, const JsonQuery& json_query) {
+    std::cout << "Running Sparser\n";
+    SparserConfig config{.input_path = input_path, .json_query = json_query};
+    config.PrintConfig();
     auto input_reader = InputReader();
     auto file_data = input_reader.ReadFile(input_path);
     auto sparser_time_start = benchmark_start();
@@ -307,26 +312,33 @@ void Sparser::Run(const std::string& input_path, const JsonQuery& json_query) {
         }
     }
 
-    std::cout << "Best cascade cost: " << min_cost << "\n\n";
+    auto stats = SearchCascade(sparser_input, json_query, rf_data, best_cascade);
+
+    auto sparser_time = benchmark_stop(sparser_time_start);
+
     std::cout << "Best cascade:\n";
     PrettyPrint(best_cascade, rf_data);
-    std::cout << "\n";
+    std::cout << "Best cascade cost: " << min_cost << "\n\n";
 
-    SearchCascade(sparser_input, json_query, rf_data, best_cascade);
+    printf("Sparser:\t\x1b[1;33mResult: %ld (Execution Time: %f seconds)\x1b[0m\n", stats.records_matched,
+           sparser_time);
 
-    std::cout << "Total time: " << benchmark_stop(sparser_time_start) << " s\n";
+    stats.PrintStats();
 
     auto naive_time_start = benchmark_start();
-    auto naive_input = input_reader.ReadRecords(file_data);
 
-    SearchNaive(naive_input, json_query);
-    std::cout << "Naive total time: " << benchmark_stop(naive_time_start) << " s\n";
+    auto naive_input = input_reader.ReadRecords(file_data);
+    auto naive_stats = SearchNaive(naive_input, json_query);
+    auto naive_time = benchmark_stop(naive_time_start);
+
+    printf("Naive:\t\x1b[1;33mResult: %ld (Execution Time: %f seconds)\x1b[0m\n", naive_stats.callback_passed,
+           naive_time);
 }
 
-void Sparser::SearchCascade(const std::vector<std::string_view>& input, const JsonQuery& json_query,
-                            const RawFilterData& rf_data, const std::shared_ptr<Node> node) {
-    // start timer here
-    int sparser_count = 0;
+SparserSearchStats Sparser::SearchCascade(const std::vector<std::string_view>& input, const JsonQuery& json_query,
+                                          const RawFilterData& rf_data, const std::shared_ptr<Node> node) {
+    size_t sparser_match = 0;
+    size_t sparser_count = 0;
 
     for (const auto& record : input) {
         auto root = node;
@@ -342,17 +354,25 @@ void Sparser::SearchCascade(const std::vector<std::string_view>& input, const Js
         }
 
         if (root->type == NodeType::PARSE) {
+            sparser_match++;
             if (json_query_driver_->RunQuery(record, json_query)) {
                 sparser_count++;
             }
         }
     }
 
-    std::cout << "Sparser found: " << sparser_count << "\n";
+    return SparserSearchStats{
+        .records_processed = input.size(),
+        .records_matched = sparser_match,
+        .callback_passed = sparser_count,
+        .fraction_true_positive = static_cast<double>(sparser_count) / static_cast<double>(sparser_match),
+        .fraction_false_positive =
+            static_cast<double>(sparser_match - sparser_count) / static_cast<double>(sparser_match),
+    };
 }
 
-void Sparser::SearchNaive(const std::vector<std::string_view>& input, const JsonQuery& json_query) {
-    int true_count = 0;
+NaiveSearchStats Sparser::SearchNaive(const std::vector<std::string_view>& input, const JsonQuery& json_query) {
+    size_t true_count = 0;
 
     for (const auto& record : input) {
         if (json_query_driver_->RunQuery(record, json_query)) {
@@ -360,5 +380,27 @@ void Sparser::SearchNaive(const std::vector<std::string_view>& input, const Json
         }
     }
 
-    std::cout << "Naive found: " << true_count << "\n";
+    return NaiveSearchStats{
+        .records_processed = input.size(),
+        .callback_passed = true_count,
+    };
+}
+
+void SparserSearchStats::PrintStats() const {
+    std::cout << "Records processed: " << records_processed << "\n";
+    std::cout << "Records matched: " << records_matched << "\n";
+    std::cout << "Records passing callback: " << callback_passed << "\n";
+    std::cout << "True positive rate: " << fraction_true_positive << "\n";
+    std::cout << "False positive rate: " << fraction_false_positive << "\n\n";
+}
+
+void SparserConfig::PrintConfig() const {
+    std::cout << "Input path: " << input_path << "\n";
+    std::cout << "Json query: " << json_query.ToString() << "\n";
+    std::cout << "RF size: " << rf_size << "\n";
+    std::cout << "Sample size: " << sample_size << "\n";
+    std::cout << "Max depth: " << max_depth << "\n";
+    std::cout << "Max rfs in pred: " << max_rfs_in_pred << "\n";
+    std::cout << "Max pred: " << max_pred << "\n";
+    std::cout << "Max conj: " << max_conj << "\n\n";
 }

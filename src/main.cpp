@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
 
         const std::string filename = args[1];
 
-        Predicate pred1{.key = "name", .value = "Trump"};
+        Predicate pred1{.key = "text", .value = "Lord of the Rings"};
 
         PredicateConjunction conj1{{pred1}};
         PredicateDisjunction disj{{conj1}};

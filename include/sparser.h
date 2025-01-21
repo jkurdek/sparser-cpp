@@ -21,6 +21,34 @@ constexpr size_t kMaxPred = 10;
 constexpr size_t kMaxConj = 10;
 constexpr size_t kTotalMaxRfs = kMaxRfsInPred * kMaxPred * kMaxConj;
 
+struct SparserConfig {
+    std::string input_path;
+    JsonQuery json_query;
+    size_t rf_size = kRfSize;
+    size_t sample_size = kSampleSize;
+    size_t max_depth = kMaxDepth;
+    size_t max_rfs_in_pred = kMaxRfsInPred;
+    size_t max_pred = kMaxPred;
+    size_t max_conj = kMaxConj;
+
+    void PrintConfig() const;
+};
+
+struct SparserSearchStats {
+    size_t records_processed;
+    size_t records_matched;
+    size_t callback_passed;
+    double fraction_true_positive;
+    double fraction_false_positive;
+    
+    void PrintStats() const;
+};
+
+struct NaiveSearchStats {
+    size_t records_processed;
+    size_t callback_passed;
+};
+
 class InputReader {
    public:
     static std::string ReadFile(const std::string& filename);
@@ -75,9 +103,9 @@ class Sparser {
 
     EstimationResult Calibrate(const std::vector<std::string_view>& input, const JsonQuery& json_query,
                                const RawFilterData& rf_data);
-    void SearchCascade(const std::vector<std::string_view>& input, const JsonQuery& json_query,
-                       const RawFilterData& rf_data, const std::shared_ptr<Node>);
-    void SearchNaive(const std::vector<std::string_view>& input, const JsonQuery& json_query);
+    SparserSearchStats SearchCascade(const std::vector<std::string_view>& input, const JsonQuery& json_query,
+                                     const RawFilterData& rf_data, const std::shared_ptr<Node>);
+    NaiveSearchStats SearchNaive(const std::vector<std::string_view>& input, const JsonQuery& json_query);
 
    private:
     std::unique_ptr<JsonQueryDriver> json_query_driver_;
