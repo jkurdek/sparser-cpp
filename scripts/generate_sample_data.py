@@ -36,7 +36,7 @@ def generate_value(field_type: Any) -> Any:
     :return: A randomly generated value.
     """
     if field_type == str:
-        return random.choice(["alpha", "beta", "gamma", "delta"])
+        return random.choice(["Lord", "beta", "gamma", "Rings"])
     elif field_type == int:
         return random.randint(0, 100)
     elif field_type == float:
@@ -52,11 +52,10 @@ def generate_value(field_type: Any) -> Any:
         return None
 
 
-# Example usage
 if __name__ == "__main__":
     schema_definition = {
         "id": int,
-        "name": str,
+        "text": str,
         "score": float,
         "tags": list,
         "details": dict,
@@ -65,8 +64,8 @@ if __name__ == "__main__":
     json_records = generate_json_records(
         num_records=100000,
         schema=schema_definition,
-        key="name",
-        value="Trump",
+        key="text",
+        value="Lord of the Rings is my favorite movie. I have watched it 100 times.",
         percentage=30,
     )
 

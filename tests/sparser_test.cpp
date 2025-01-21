@@ -1,5 +1,3 @@
-#include "sparser.h"
-
 #include <gtest/gtest.h>
 
 #include <array>
@@ -10,7 +8,10 @@
 #include <string_view>
 #include <vector>
 
+#include "cascade_builder.h"
+#include "cascade_evaluator.h"
 #include "json_facade.h"
+#include "node.h"
 
 TEST(JsonQuery, ToString_ReturnsCorrectFormat) {
     const Predicate pred_1{.key = "name", .value = "John Doe"};
