@@ -92,40 +92,6 @@ TEST(RawFilterQueryGenerator, GenerateRawFilters_GenerateRawFiltersForSinglePred
     }
 }
 
-TEST(RapidJsonFacade, Parse_ValidJson_SuccessfulParsing) {
-    RapidJsonFacade facade;
-    std::string_view validJson = R"({"name":"John","age":"30"})";
-    facade.Parse(validJson);
-
-    auto nameValue = facade.GetString("name");
-    ASSERT_TRUE(nameValue.has_value());
-    EXPECT_EQ(*nameValue, "John");
-
-    auto ageValue = facade.GetString("age");
-    ASSERT_TRUE(ageValue.has_value());
-    EXPECT_EQ(*ageValue, "30");
-}
-
-TEST(RapidJsonFacade, Parse_InvalidJson_ThrowsException) {
-    RapidJsonFacade facade;
-    std::string_view invalidJson = R"({invalid json})";  // Missing quotes, braces, etc.
-    EXPECT_ANY_THROW(facade.Parse(invalidJson)) << "Should fail to parse invalid JSON";
-    EXPECT_FALSE(facade.GetString("randomKey").has_value());
-}
-
-TEST(RapidJsonFacade, GetString_ExistingAndMissingKeys_BehavesCorrectly) {
-    RapidJsonFacade facade;
-    std::string_view json = R"({"fruit":"apple"})";
-    facade.Parse(json);
-
-    auto fruitVal = facade.GetString("fruit");
-    ASSERT_TRUE(fruitVal.has_value());
-    EXPECT_EQ(*fruitVal, "apple");
-
-    auto colorVal = facade.GetString("color");
-    EXPECT_FALSE(colorVal.has_value());
-}
-
 TEST(JsonQueryDriver, RunQuery_AllPredicatesMatch_ReturnsTrue) {
     auto facade = std::make_unique<RapidJsonFacade>();
     JsonQueryDriver driver(std::move(facade));

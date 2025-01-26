@@ -1,6 +1,6 @@
 #include "json_facade.h"
 
-#include <optional>
+#include <cstring>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -36,47 +36,47 @@ std::ostream& operator<<(std::ostream& os, const JsonQuery& query) {
     return os;
 }
 
-void RapidJsonFacade::Parse(std::string_view jsonStr) {
-    rapidjson::ParseResult ok = doc_.Parse(jsonStr.data(), jsonStr.size());
-    if (!ok || !doc_.IsObject()) {
+bool RapidJsonFacade::EvaluateQuery(std::string_view jsonStr, const JsonQuery& query) {
+    rapidjson::Document doc;
+    rapidjson::ParseResult ok = doc.Parse(jsonStr.data(), jsonStr.size());
+
+    if (!ok || !doc.IsObject()) {
+#ifndef NDEBUG
         throw std::runtime_error("Failed to parse JSON string");
+#endif
+        return false;
     }
-    key_value_map_.clear();
 
-    for (auto it = doc_.MemberBegin(); it != doc_.MemberEnd(); ++it) {
-        const char* key = it->name.GetString();
-        if (it->value.IsString()) {
-            key_value_map_[key] = it->value.GetString();
-        }
-    }
-}
-
-std::optional<std::string_view> RapidJsonFacade::GetString(std::string_view key) const {
-    auto it = key_value_map_.find(key);
-    if (it == key_value_map_.end()) {
-        return std::nullopt;
-    }
-    return it->second;
-}
-
-bool JsonQueryDriver::RunQuery(std::string_view buffer, const JsonQuery& query) {
-    json_facade_->Parse(buffer);
+    bool ans = false;
 
     for (const auto& conjunction : query.GetDisjunction().conjunctions) {
         bool all_predicates_satisfied = true;
 
         for (const auto& predicate : conjunction.predicates) {
-            auto value = json_facade_->GetString(predicate.key);
-            if (!value.has_value() || !value.value().contains(predicate.value)) {
+            auto itr = doc.FindMember(predicate.key.c_str());
+
+            if (itr == doc.MemberEnd()) {
+#ifndef NDEBUG
+                throw std::runtime_error("Key not found: " + predicate.key);
+#endif
+                return false;
+            }
+
+            if (!itr->value.IsString() || !strstr(itr->value.GetString(), predicate.value.c_str())) {
                 all_predicates_satisfied = false;
                 break;
             }
         }
 
         if (all_predicates_satisfied) {
-            return true;
+            ans = true;
+            break;
         }
     }
 
-    return false;
+    return ans;
+}
+
+bool JsonQueryDriver::RunQuery(std::string_view buffer, const JsonQuery& query) {
+    return json_facade_->EvaluateQuery(buffer, query);
 }

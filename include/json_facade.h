@@ -38,18 +38,12 @@ class JsonQuery {
 class JsonFacade {
    public:
     virtual ~JsonFacade() = default;
-    virtual void Parse(std::string_view jsonStr) = 0;
-    virtual std::optional<std::string_view> GetString(std::string_view key) const = 0;
+    virtual bool EvaluateQuery(std::string_view jsonStr, const JsonQuery& query) = 0;
 };
 
 class RapidJsonFacade : public JsonFacade {
    public:
-    void Parse(std::string_view jsonStr) override;
-    std::optional<std::string_view> GetString(std::string_view key) const override;
-
-   private:
-    rapidjson::Document doc_;
-    std::unordered_map<std::string_view, std::string_view> key_value_map_;
+    virtual bool EvaluateQuery(std::string_view jsonStr, const JsonQuery& query) override;
 };
 
 class JsonQueryDriver {
