@@ -13,6 +13,8 @@
           "value": "YES",
           "type": "BOOL"
         },
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
         "ENABLE_CLANG_TIDY": {
           "value": "ON",
           "type": "BOOL"
