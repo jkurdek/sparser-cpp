@@ -50,7 +50,9 @@
       "inherits": "linux-x64",
       "description": "Release preset for x64 Linux",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG -march=native",
+        "CMAKE_C_FLAGS_RELEASE": "-O3"
       }
     },
     {
@@ -58,7 +60,9 @@
       "inherits": "macos-arm-base",
       "description": "Release preset for ARM macOS",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG -march=native",
+        "CMAKE_C_FLAGS_RELEASE": "-O3"
       }
     },
     {

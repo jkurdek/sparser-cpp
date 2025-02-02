@@ -26,23 +26,26 @@ std::string InputReader::ReadFile(const std::string& filename) {
 
 std::vector<std::string_view> InputReader::ReadRecords(const std::string& input) {
     std::vector<std::string_view> records;
-    size_t start = 0;
-    size_t end = 0;
+    records.reserve(1000000); // Pre-allocated capacity
 
-    while (end < input.size()) {
-        if (input[end] == '\n') {
-            records.emplace_back(&input[start], end - start);
-            start = end + 1;  // Skip the delimiter
+    const char* start = input.data();
+    const char* end = start;
+    const char* const input_end = start + input.size();
+
+    while (end < input_end) {
+        if (*end == '\n') {
+            records.emplace_back(start, end - start);
+            start = end + 1; // Move past the delimiter
         }
         ++end;
     }
 
     // Add the last segment if not empty
-    if (start < input.size()) {
+    if (start < input_end) {
 #ifndef NDEBUG
-        std::cout << "Adding last segment" << std::string_view(&input[start], input.size() - start) << "\n";
+        std::cout << "Adding last segment" << std::string_view(start, input_end - start) << "\n";
 #endif
-        records.emplace_back(&input[start], input.size() - start);
+        records.emplace_back(start, input_end - start);
     }
 
     return records;
