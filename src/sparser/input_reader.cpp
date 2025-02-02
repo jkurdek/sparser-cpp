@@ -29,23 +29,24 @@ std::vector<std::string_view> InputReader::ReadRecords(const std::string& input)
     records.reserve(1000000); // Pre-allocated capacity
 
     const char* start = input.data();
-    const char* end = start;
-    const char* const input_end = start + input.size();
+    const char* input_end = start + input.size();
 
-    while (end < input_end) {
-        if (*end == '\n') {
-            records.emplace_back(start, end - start);
-            start = end + 1; // Move past the delimiter
-        }
-        ++end;
-    }
-
-    // Add the last segment if not empty
-    if (start < input_end) {
+    while (start < input_end) {
+        // Use memchr to find the next newline in the remaining input.
+        const void* pos = std::memchr(start, '\n', input_end - start);
+        if (pos) {
+            const char* newline = static_cast<const char*>(pos);
+            records.emplace_back(start, newline - start);
+            start = newline + 1; // Move past the newline
+        } else {
 #ifndef NDEBUG
-        std::cout << "Adding last segment" << std::string_view(start, input_end - start) << "\n";
+            std::cout << "Adding last segment: " 
+                      << std::string_view(start, input_end - start) << "\n";
 #endif
-        records.emplace_back(start, input_end - start);
+            // No newline found, so the rest is the last record.
+            records.emplace_back(start, input_end - start);
+            break;
+        }
     }
 
     return records;
