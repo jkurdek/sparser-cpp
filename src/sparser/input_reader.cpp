@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <cstring> 
 
 std::string InputReader::ReadFile(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
