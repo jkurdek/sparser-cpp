@@ -4,8 +4,6 @@
 #include "json_facade.h"
 #include "sparser.h"
 
-// constexpr double GIGABYTE = 1e9;
-
 int main(int argc, char* argv[]) {
     try {
         auto args = std::span(argv, argc);
