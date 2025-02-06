@@ -9,8 +9,8 @@
 #include "node.h"
 
 struct EstimationResult {
-    unsigned long long total_parser_runtime;
-    std::array<unsigned long long, kTotalMaxRfs> total_rf_runtimes;
+    double average_parse_time;
+    double average_rf_time;
     std::array<std::bitset<kSampleSize>, kTotalMaxRfs> bitsets;
 };
 

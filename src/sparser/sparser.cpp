@@ -22,6 +22,10 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
 
     assert(input.size() >= kSampleSize);
 
+    double total_rf_time = 0.0;
+    size_t rf_count = 0;
+    double total_parser_time = 0.0;
+
     for (size_t i = 0; i < kSampleSize; i++) {
         auto json_row = input[i];
         for (uint32_t conj_idx = 0; conj_idx < rf_data.conj_count; conj_idx++) {
@@ -36,7 +40,11 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
 
                     auto grepStart = rdtsc();
                     auto find_result = json_row.find(rf);
-                    result.total_rf_runtimes[idx] += (rdtsc() - grepStart);
+                    auto grepEnd = rdtsc();
+
+                    double rf_runtime = grepEnd - grepStart;
+                    total_rf_time += rf_runtime;
+                    rf_count++;
 
                     if (find_result != std::string_view::npos) {
 #ifndef NDEBUG
@@ -54,9 +62,13 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
 
         auto json_query_start = rdtsc();
         json_query_driver_->RunQuery(input[i], json_query);
-        result.total_parser_runtime += (rdtsc() - json_query_start);
+        total_parser_time += (rdtsc() - json_query_start);
     }
 
+    result.average_rf_time = total_rf_time / rf_count;
+    result.average_parse_time = total_parser_time / kSampleSize;
+    std::cout << "Average rf time: " << result.average_rf_time << std::endl;
+    std::cout << "Average full parse time: " << result.average_parse_time << std::endl;
     return result;
 }
 

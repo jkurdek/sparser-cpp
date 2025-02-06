@@ -263,13 +263,11 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_1_Conj_1_Rf_ReturnsExpectedE
      */
 
     double precision = 1e-6;
-    auto estimation_result = EstimationResult{.total_parser_runtime = 100, .total_rf_runtimes = {}, .bitsets = {}};
+    auto estimation_result = EstimationResult{.average_parse_time = 100, .average_rf_time = 2.0, .bitsets = {}};
 
     fillArrayWithRandomValues(estimation_result.bitsets);
-    fillArrayWithRandomValues(estimation_result.total_rf_runtimes, 5.0, 100.0);
 
     estimation_result.bitsets[0] = 0b1111000000;
-    estimation_result.total_rf_runtimes[0] = 2.0;
 
     std::shared_ptr<Node> left = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::FAIL);
     std::shared_ptr<Node> right = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::PARSE);
@@ -298,17 +296,14 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_1_Conj_2_Rfs_ReturnsExpected
 
     double precision = 1e-6;
     auto estimation_result = EstimationResult{
-        .total_parser_runtime = 100,
-        .total_rf_runtimes = {},
+        .average_parse_time = 100,
+        .average_rf_time = 2.0,
         .bitsets = {},
     };
 
     fillArrayWithRandomValues(estimation_result.bitsets);
-    fillArrayWithRandomValues(estimation_result.total_rf_runtimes, 5.0, 100.0);
     estimation_result.bitsets[0] = 0b1111000000;
     estimation_result.bitsets[1] = 0b1100000001;
-    estimation_result.total_rf_runtimes[0] = 2.0;
-    estimation_result.total_rf_runtimes[1] = 3.0;
 
     std::shared_ptr<Node> fail = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::FAIL);
     std::shared_ptr<Node> parse = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::PARSE);
@@ -323,7 +318,7 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_1_Conj_2_Rfs_ReturnsExpected
     EXPECT_NEAR(0.2, evaluator.rf_probabilities_[evaluator.parse_idx_], precision);
     EXPECT_NEAR(0.8, evaluator.rf_probabilities_[evaluator.fail_idx_], precision);
 
-    double expected = 1.0 * 2 + 0.4 * 3 + 0.2 * 100;  // RF_0 cost + RF_1 cost + Total parser cost
+    double expected = 1.0 * 2 + 0.4 * 2 + 0.2 * 100;  // RF_0 cost + RF_1 cost + Total parser cost
     EXPECT_NEAR(expected, result, precision);
 }
 
@@ -340,14 +335,8 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_2_conj_2_preds_2_rfs_Returns
      */
 
     double precision = 1e-6;
-    auto estimation_result = EstimationResult{.total_parser_runtime = 100, .total_rf_runtimes = {}, .bitsets = {}};
+    auto estimation_result = EstimationResult{.average_parse_time = 100, .average_rf_time = 5, .bitsets = {}};
     fillArrayWithRandomValues(estimation_result.bitsets);
-    fillArrayWithRandomValues(estimation_result.total_rf_runtimes, 5.0, 100.0);
-
-    estimation_result.total_rf_runtimes[GetFlatIdx(1, 0, 1)] = 3.0;
-    estimation_result.total_rf_runtimes[GetFlatIdx(1, 1, 1)] = 5.0;
-    estimation_result.total_rf_runtimes[GetFlatIdx(0, 0, 0)] = 7.0;
-    estimation_result.total_rf_runtimes[GetFlatIdx(0, 1, 2)] = 11.0;
 
     estimation_result.bitsets[GetFlatIdx(1, 0, 1)] = 0b0100101010;
     estimation_result.bitsets[GetFlatIdx(1, 1, 1)] = 0b1100111101;
@@ -376,6 +365,6 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_2_conj_2_preds_2_rfs_Returns
     EXPECT_NEAR(0.6, evaluator.rf_probabilities_[evaluator.parse_idx_], precision);
     EXPECT_NEAR(0.4, evaluator.rf_probabilities_[evaluator.fail_idx_], precision);
 
-    double expected = 1.0 * 3 + 0.4 * 5 + 0.7 * 7 + 0.4 * 11 + 0.6 * 100;
+    double expected = 1.0 * 5 + 0.4 * 5 + 0.7 * 5 + 0.4 * 5 + 0.6 * 100;
     EXPECT_NEAR(expected, result, precision);
 }

@@ -8,10 +8,10 @@ double CascadeEvaluator::EvaluateCascade(std::shared_ptr<Node> node) {
 
     double cost = 0.0;
     for (size_t idx = 0; idx < kTotalMaxRfs; idx++) {
-        cost += rf_probabilities_[idx] * estimation_result_.total_rf_runtimes[idx];
+        cost += rf_probabilities_[idx] * estimation_result_.average_rf_time;
     }
 
-    cost += rf_probabilities_[parse_idx_] * estimation_result_.total_parser_runtime;
+    cost += rf_probabilities_[parse_idx_] * estimation_result_.average_parse_time;
 
     return cost;
 }
