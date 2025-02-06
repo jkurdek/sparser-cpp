@@ -1,3 +1,4 @@
+#include <memory>
 #include <span>
 
 #include "json_facade.h"
@@ -21,8 +22,9 @@ int main(int argc, char* argv[]) {
         PredicateConjunction conj1{{pred1}};
         PredicateDisjunction disj{{conj1}};
 
-        auto json_query_driver = new JsonQueryDriver(std::make_unique<RapidJsonFacade>());
-        auto sparser = Sparser(std::unique_ptr<JsonQueryDriver>(json_query_driver));
+        auto facade = std::make_unique<RapidJsonFacade>();
+        auto json_query_driver = std::make_unique<JsonQueryDriver>(std::move(facade));
+        auto sparser = Sparser(std::move(json_query_driver));
         sparser.Run(filename, JsonQuery(disj));
 
     } catch (const std::exception& e) {
