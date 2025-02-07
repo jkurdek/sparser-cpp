@@ -1,77 +1,97 @@
 {
-  "version": 3,
-  "configurePresets": [
-    {
-      "name": "base",
-      "hidden": true,
-      "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": {
-          "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-          "type": "FILEPATH"
-        },
-        "CMAKE_EXPORT_COMPILE_COMMANDS": {
-          "value": "YES",
-          "type": "BOOL"
-        },
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "ENABLE_CLANG_TIDY": {
-          "value": "ON",
-          "type": "BOOL"
-        }
-      },
-      "binaryDir": "${sourceDir}/build"
-    },
-    {
-      "name": "macos-arm-base",
-      "hidden": true,
-      "inherits": "base",
-      "description": "Preset for ARM macOS",
-      "cacheVariables": {
-        "CMAKE_SYSTEM_NAME": "Darwin",
-        "VCPKG_TARGET_TRIPLET": "arm64-osx"
-      }
-    },
-    {
-      "name": "linux-x64",
-      "inherits": "base",
-      "description": "Preset for x64 Linux",
-      "cacheVariables": {
-        "CMAKE_SYSTEM_NAME": "Linux",
-        "VCPKG_TARGET_TRIPLET": "x64-linux",
-        "ENABLE_CLANG_TIDY": {
-          "value": "OFF",
-          "type": "BOOL"
-        }
-      }
-    },
-    {
-      "name": "linux-x64-release",
-      "inherits": "linux-x64",
-      "description": "Release preset for x64 Linux",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG -march=native",
-        "CMAKE_C_FLAGS_RELEASE": "-O3"
-      }
-    },
-    {
-      "name": "macos-arm-release",
-      "inherits": "macos-arm-base",
-      "description": "Release preset for ARM macOS",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG -march=native",
-        "CMAKE_C_FLAGS_RELEASE": "-O3"
-      }
-    },
-    {
-      "name": "macos-arm-debug",
-      "inherits": "macos-arm-base",
-      "description": "Debug preset for ARM macOS",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    }
-  ]
+	"version": 3,
+	"configurePresets": [
+		{
+			"name": "base",
+			"hidden": true,
+			"cacheVariables": {
+				"CMAKE_TOOLCHAIN_FILE": {
+					"value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+					"type": "FILEPATH"
+				},
+				"CMAKE_EXPORT_COMPILE_COMMANDS": {
+					"value": "YES",
+					"type": "BOOL"
+				},
+				"CMAKE_C_COMPILER": "clang",
+				"CMAKE_CXX_COMPILER": "clang++",
+				"ENABLE_CLANG_TIDY": {
+					"value": "ON",
+					"type": "BOOL"
+				}
+			},
+			"binaryDir": "${sourceDir}/build"
+		},
+		{
+			"name": "macos-arm-base",
+			"hidden": true,
+			"inherits": "base",
+			"description": "Preset for ARM macOS",
+			"cacheVariables": {
+				"CMAKE_SYSTEM_NAME": "Darwin",
+				"VCPKG_TARGET_TRIPLET": "arm64-osx"
+			}
+		},
+		{
+			"name": "linux-x64",
+			"inherits": "base",
+			"description": "Preset for x64 Linux",
+			"cacheVariables": {
+				"CMAKE_SYSTEM_NAME": "Linux",
+				"VCPKG_TARGET_TRIPLET": "x64-linux",
+				"ENABLE_CLANG_TIDY": {
+					"value": "OFF",
+					"type": "BOOL"
+				}
+			}
+		},
+		{
+			"name": "linux-x64-release",
+			"inherits": "linux-x64",
+			"description": "Release preset for x64 Linux",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release",
+				"CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG -march=native",
+				"CMAKE_C_FLAGS_RELEASE": "-O3"
+			}
+		},
+		{
+			"name": "macos-arm-release",
+			"inherits": "macos-arm-base",
+			"description": "Release preset for ARM macOS",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release",
+				"CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG -march=native",
+				"CMAKE_C_FLAGS_RELEASE": "-O3"
+			}
+		},
+		{
+			"name": "macos-arm-debug",
+			"inherits": "macos-arm-base",
+			"description": "Debug preset for ARM macOS",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Debug"
+			}
+		}
+	],
+	"buildPresets": [
+		{
+			"name": "macos-arm-release",
+			"configurePreset": "macos-arm-release",
+			"configuration": "Release",
+			"jobs": 0,
+			"targets": [
+				"all"
+			]
+		},
+		{
+			"name": "macos-arm-debug",
+			"configurePreset": "macos-arm-debug",
+			"configuration": "Debug",
+			"jobs": 0,
+			"targets": [
+				"all"
+			]
+		}
+	]
 }
