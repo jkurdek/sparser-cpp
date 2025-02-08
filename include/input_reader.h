@@ -6,8 +6,8 @@
 
 class InputReader {
    public:
-    static std::string ReadFile(const std::string& filename);
-    static std::vector<std::string_view> ReadRecords(const std::string& input);
+    [[nodiscard]] static std::string ReadFile(const std::string& filename);
+    [[nodiscard]] static std::vector<std::string_view> ReadRecords(const std::string& input);
 };
 
 #endif  // INPUT_READER_H_

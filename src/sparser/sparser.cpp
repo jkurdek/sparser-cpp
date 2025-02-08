@@ -61,7 +61,8 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
         }
 
         auto json_query_start = rdtsc();
-        json_query_driver_->RunQuery(input[i], json_query);
+        auto query_result = json_query_driver_->RunQuery(input[i], json_query);
+        (void)query_result;  // explicitly ignore the result
         total_parser_time += (rdtsc() - json_query_start);
     }
 

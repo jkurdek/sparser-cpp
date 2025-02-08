@@ -47,11 +47,12 @@ class Sparser {
 
     void Run(const std::string& input_path, const JsonQuery& json_query);
 
-    EstimationResult Calibrate(const std::vector<std::string_view>& input, const JsonQuery& json_query,
-                               const RawFilterData& rf_data);
-    SparserSearchStats SearchCascade(const std::vector<std::string_view>& input, const JsonQuery& json_query,
-                                     const RawFilterData& rf_data, const std::shared_ptr<Node>);
-    NaiveSearchStats SearchNaive(const std::vector<std::string_view>& input, const JsonQuery& json_query);
+    [[nodiscard]] EstimationResult Calibrate(const std::vector<std::string_view>& input, const JsonQuery& json_query,
+                                             const RawFilterData& rf_data);
+    [[nodiscard]] SparserSearchStats SearchCascade(const std::vector<std::string_view>& input,
+                                                   const JsonQuery& json_query, const RawFilterData& rf_data,
+                                                   const std::shared_ptr<Node>);
+    [[nodiscard]] NaiveSearchStats SearchNaive(const std::vector<std::string_view>& input, const JsonQuery& json_query);
 
    private:
     std::unique_ptr<JsonQueryDriver> json_query_driver_;

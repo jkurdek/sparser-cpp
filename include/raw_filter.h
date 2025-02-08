@@ -16,11 +16,11 @@ struct RawFilterData {
 
 class RawFilterQueryGenerator {
    public:
-    static RawFilterData GenerateRawFilters(const PredicateDisjunction& disjunction);
-    static std::vector<std::string_view> GenerateRawFiltersFromPredicate(const std::string_view& input);
+    [[nodiscard]] static RawFilterData GenerateRawFilters(const PredicateDisjunction& disjunction);
+    [[nodiscard]] static std::vector<std::string_view> GenerateRawFiltersFromPredicate(const std::string_view& input);
 };
 
-inline size_t GetFlatIdx(size_t conj_idx, size_t pred_idx, size_t rf_idx) {
+[[nodiscard]] inline size_t GetFlatIdx(size_t conj_idx, size_t pred_idx, size_t rf_idx) {
     return conj_idx * kMaxPred * kMaxRfsInPred + pred_idx * kMaxRfsInPred + rf_idx;
 }
 

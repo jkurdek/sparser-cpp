@@ -18,7 +18,7 @@ class CascadeEvaluator {
    public:
     CascadeEvaluator(const EstimationResult& estimation_result) : estimation_result_(estimation_result) {}
 
-    double EvaluateCascade(std::shared_ptr<Node> cascade);
+    [[nodiscard]] double EvaluateCascade(std::shared_ptr<Node> cascade);
     std::array<double, kTotalMaxRfs + 2> rf_probabilities_;  // Changes every call to EvaluateCascade
     const size_t parse_idx_ = kTotalMaxRfs + 1;
     const size_t fail_idx_ = kTotalMaxRfs;

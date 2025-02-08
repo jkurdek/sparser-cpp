@@ -1,13 +1,10 @@
 #ifndef JSON_FACADE_H_
 #define JSON_FACADE_H_
 
-#include <optional>
+#include <memory>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <vector>
-
-#include "rapidjson/document.h"
 
 struct Predicate {
     std::string key;
@@ -38,18 +35,18 @@ class JsonQuery {
 class JsonFacade {
    public:
     virtual ~JsonFacade() = default;
-    virtual bool EvaluateQuery(std::string_view jsonStr, const JsonQuery& query) = 0;
+    [[nodiscard]] virtual bool EvaluateQuery(std::string_view jsonStr, const JsonQuery& query) = 0;
 };
 
 class RapidJsonFacade : public JsonFacade {
    public:
-    virtual bool EvaluateQuery(std::string_view jsonStr, const JsonQuery& query) override;
+    [[nodiscard]] virtual bool EvaluateQuery(std::string_view jsonStr, const JsonQuery& query) override;
 };
 
 class JsonQueryDriver {
    public:
     explicit JsonQueryDriver(std::unique_ptr<JsonFacade>&& json_facade = {}) : json_facade_(std::move(json_facade)) {}
-    bool RunQuery(std::string_view buffer, const JsonQuery& query);
+    [[nodiscard]] bool RunQuery(std::string_view buffer, const JsonQuery& query);
 
    private:
     std::unique_ptr<JsonFacade> json_facade_;
