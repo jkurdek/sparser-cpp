@@ -12,10 +12,8 @@ add_compile_options(-Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(ENABLE_CLANG_TIDY)
-    if(CLANG_TIDY)
     find_program(CLANG_TIDY "clang-tidy")
         set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY}")
-    endif()
 endif()
 
 find_package(GTest CONFIG REQUIRED)
