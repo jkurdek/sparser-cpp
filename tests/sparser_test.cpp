@@ -276,10 +276,6 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_1_Conj_1_Rf_ReturnsExpectedE
     CascadeEvaluator evaluator(estimation_result);
     double result = evaluator.EvaluateCascade(root);
 
-    EXPECT_NEAR(1.0, evaluator.rf_probabilities_[0], precision);
-    EXPECT_NEAR(0.4, evaluator.rf_probabilities_[evaluator.parse_idx_], precision);
-    EXPECT_NEAR(0.6, evaluator.rf_probabilities_[evaluator.fail_idx_], precision);
-
     double expected = 1.0 * 2 + 0.4 * 100;  // RF_0 cost + Total parser cost
     EXPECT_NEAR(expected, result, precision);
 }
@@ -312,11 +308,6 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_1_Conj_2_Rfs_ReturnsExpected
 
     CascadeEvaluator evaluator(estimation_result);
     double result = evaluator.EvaluateCascade(root);
-
-    EXPECT_NEAR(1.0, evaluator.rf_probabilities_[0], precision);
-    EXPECT_NEAR(0.4, evaluator.rf_probabilities_[1], precision);
-    EXPECT_NEAR(0.2, evaluator.rf_probabilities_[evaluator.parse_idx_], precision);
-    EXPECT_NEAR(0.8, evaluator.rf_probabilities_[evaluator.fail_idx_], precision);
 
     double expected = 1.0 * 2 + 0.4 * 2 + 0.2 * 100;  // RF_0 cost + RF_1 cost + Total parser cost
     EXPECT_NEAR(expected, result, precision);
@@ -357,13 +348,6 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_2_conj_2_preds_2_rfs_Returns
 
     CascadeEvaluator evaluator(estimation_result);
     double result = evaluator.EvaluateCascade(node_1_0_1_root);
-
-    EXPECT_NEAR(1.0, evaluator.rf_probabilities_[GetFlatIdx(1, 0, 1)], precision);
-    EXPECT_NEAR(0.4, evaluator.rf_probabilities_[GetFlatIdx(1, 1, 1)], precision);
-    EXPECT_NEAR(0.7, evaluator.rf_probabilities_[GetFlatIdx(0, 0, 0)], precision);
-    EXPECT_NEAR(0.4, evaluator.rf_probabilities_[GetFlatIdx(0, 1, 2)], precision);
-    EXPECT_NEAR(0.6, evaluator.rf_probabilities_[evaluator.parse_idx_], precision);
-    EXPECT_NEAR(0.4, evaluator.rf_probabilities_[evaluator.fail_idx_], precision);
 
     double expected = 1.0 * 5 + 0.4 * 5 + 0.7 * 5 + 0.4 * 5 + 0.6 * 100;
     EXPECT_NEAR(expected, result, precision);

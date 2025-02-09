@@ -16,16 +16,15 @@ struct EstimationResult {
 
 class CascadeEvaluator {
    public:
-    CascadeEvaluator(const EstimationResult& estimation_result) : estimation_result_(estimation_result) {}
+    explicit CascadeEvaluator(const EstimationResult& estimation_result) : estimation_result_(estimation_result) {}
 
-    [[nodiscard]] double EvaluateCascade(std::shared_ptr<Node> cascade);
-    std::array<double, kTotalMaxRfs + 2> rf_probabilities_;  // Changes every call to EvaluateCascade
-    const size_t parse_idx_ = kTotalMaxRfs + 1;
-    const size_t fail_idx_ = kTotalMaxRfs;
+    [[nodiscard]] double EvaluateCascade(const std::shared_ptr<Node>& cascade);
 
    private:
     const EstimationResult& estimation_result_;
-    void EvaluateNodeRec(std::shared_ptr<Node> node, std::bitset<kSampleSize> cumulative_bitset);
+
+    [[nodiscard]] double EvaluateSubtreeCost(const std::shared_ptr<Node>& subtree,
+                                             const std::bitset<kSampleSize>& active_mask);
 };
 
 #endif  // CASCADE_EVALUATOR_H_

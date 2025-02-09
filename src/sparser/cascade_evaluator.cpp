@@ -2,43 +2,29 @@
 
 #include "raw_filter.h"
 
-double CascadeEvaluator::EvaluateCascade(std::shared_ptr<Node> node) {
-    rf_probabilities_.fill(0.0);
-    EvaluateNodeRec(node, std::bitset<kSampleSize>().set());
-
-    double cost = 0.0;
-    for (size_t idx = 0; idx < kTotalMaxRfs; idx++) {
-        cost += rf_probabilities_[idx] * estimation_result_.average_rf_time;
-    }
-
-    cost += rf_probabilities_[parse_idx_] * estimation_result_.average_parse_time;
-
-    return cost;
+double CascadeEvaluator::EvaluateCascade(const std::shared_ptr<Node>& cascade) {
+    return EvaluateSubtreeCost(cascade, std::bitset<kSampleSize>().set());
 }
 
-void CascadeEvaluator::EvaluateNodeRec(std::shared_ptr<Node> node, std::bitset<kSampleSize> cumulative_bitset) {
-    if (!node) {
-        throw std::runtime_error("Node is nullptr");
-    }
+double CascadeEvaluator::EvaluateSubtreeCost(const std::shared_ptr<Node>& node,
+                                             const std::bitset<kSampleSize>& passed_records) {
+    if (!node) return 0.0;
 
-    if (node->type == NodeType::FAIL) {
-        rf_probabilities_[fail_idx_] +=
-            static_cast<double>(cumulative_bitset.count()) / static_cast<double>(kSampleSize);
-        return;
-    }
-
+    const double pass_fraction = static_cast<double>(passed_records.count()) / kSampleSize;
     if (node->type == NodeType::PARSE) {
-        rf_probabilities_[parse_idx_] +=
-            static_cast<double>(cumulative_bitset.count()) / static_cast<double>(kSampleSize);
-        return;
+        return pass_fraction * estimation_result_.average_parse_time;
+    }
+    if (node->type == NodeType::FAIL) {
+        return 0.0;
     }
 
-    auto current_rf_idx = GetFlatIdx(node->conjunction_idx, node->predicate_idx, node->raw_filter_idx);
-    rf_probabilities_[current_rf_idx] +=
-        static_cast<double>(cumulative_bitset.count()) / static_cast<double>(kSampleSize);
+    double subtree_cost = pass_fraction * estimation_result_.average_rf_time;
 
-    auto bitset = estimation_result_.bitsets[current_rf_idx];
+    const auto& matching_records =
+        estimation_result_.bitsets[GetFlatIdx(node->conjunction_idx, node->predicate_idx, node->raw_filter_idx)];
 
-    EvaluateNodeRec(node->left, cumulative_bitset & (~bitset));
-    EvaluateNodeRec(node->right, (cumulative_bitset & bitset));
+    return EvaluateSubtreeCost(node->left, passed_records & ~matching_records) +
+           EvaluateSubtreeCost(node->right, passed_records & matching_records) + subtree_cost;
+
+    return subtree_cost;
 }
