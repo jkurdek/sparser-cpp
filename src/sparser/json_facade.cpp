@@ -74,36 +74,36 @@ bool RapidJsonFacade::EvaluateQuery(std::string_view jsonStr, const JsonQuery& q
 }
 
 bool SimdJsonFacade::EvaluateQuery(std::string_view jsonStr, const JsonQuery& query) {
-    static thread_local simdjson::ondemand::parser parser;
-    auto json = simdjson::padded_string(jsonStr);
+    static thread_local simdjson::dom::parser parser;
+    
     try {
-        auto doc = parser.iterate(json);
-        auto obj = doc.get_object();
-
+        simdjson::dom::element doc = parser.parse(jsonStr.data(), jsonStr.size());
+        
         for (const auto& conjunction : query.GetDisjunction().conjunctions) {
             bool all_predicates_satisfied = true;
+            
             for (const auto& predicate : conjunction.predicates) {
-                auto field_result = obj[predicate.key];
-                if (field_result.error() || !field_result.is_string()) {
+                simdjson::dom::element field;
+                auto error = doc[predicate.key].get(field);
+                
+                if (error || !field.is_string()) {
                     all_predicates_satisfied = false;
                     break;
                 }
-                std::string_view field_str;
-                if (field_result.get_string().get(field_str) != simdjson::SUCCESS ||
-                    field_str.find(predicate.value) == std::string_view::npos) {
+                
+                std::string_view field_str = field.get_string().value();
+                if (field_str.find(predicate.value) == std::string_view::npos) {
                     all_predicates_satisfied = false;
                     break;
                 }
             }
+            
             if (all_predicates_satisfied) {
                 return true;
             }
         }
         return false;
-    } catch (const simdjson::simdjson_error& e) {
-#ifndef NDEBUG
-        throw std::runtime_error(e.what());
-#endif
+    } catch (const simdjson::simdjson_error&) {
         return false;
     }
 }
