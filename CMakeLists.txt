@@ -20,6 +20,7 @@ endif()
 
 find_package(GTest CONFIG REQUIRED)
 find_package(RapidJSON CONFIG REQUIRED)
+find_package(simdjson CONFIG REQUIRED)
 
 enable_testing()
 

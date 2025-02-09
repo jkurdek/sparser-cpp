@@ -22,7 +22,11 @@ int main(int argc, char* argv[]) {
 
         auto facade = std::make_unique<RapidJsonFacade>();
         auto json_query_driver = std::make_unique<JsonQueryDriver>(std::move(facade));
-        auto sparser = Sparser(std::move(json_query_driver));
+
+        auto simdjsonfacade = std::make_unique<SimdJsonFacade>();
+        auto simdjson_query_driver = std::make_unique<JsonQueryDriver>(std::move(simdjsonfacade));
+
+        auto sparser = Sparser(std::move(simdjson_query_driver));
         sparser.Run(filename, JsonQuery(disj));
 
     } catch (const std::exception& e) {

@@ -43,6 +43,11 @@ class RapidJsonFacade : public JsonFacade {
     [[nodiscard]] virtual bool EvaluateQuery(std::string_view jsonStr, const JsonQuery& query) override;
 };
 
+class SimdJsonFacade : public JsonFacade {
+   public:
+    [[nodiscard]] virtual bool EvaluateQuery(std::string_view jsonStr, const JsonQuery& query) override;
+};
+
 class JsonQueryDriver {
    public:
     explicit JsonQueryDriver(std::unique_ptr<JsonFacade>&& json_facade = {}) : json_facade_(std::move(json_facade)) {}

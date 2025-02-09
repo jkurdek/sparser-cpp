@@ -1,6 +1,7 @@
 {
-  "dependencies": [
-    "gtest",
-    "rapidjson"
-  ]
+    "dependencies": [
+        "gtest",
+        "rapidjson",
+        "simdjson"
+    ]
 }
