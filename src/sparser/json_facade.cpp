@@ -38,7 +38,7 @@ std::ostream& operator<<(std::ostream& os, const JsonQuery& query) {
 }
 
 bool RapidJsonFacade::EvaluateQuery(std::string_view jsonStr, const JsonQuery& query) {
-    rapidjson::Document doc;
+    static thread_local rapidjson::Document doc;
     rapidjson::ParseResult ok = doc.Parse(jsonStr.data(), jsonStr.size());
 
     if (!ok || !doc.IsObject()) {
@@ -48,72 +48,58 @@ bool RapidJsonFacade::EvaluateQuery(std::string_view jsonStr, const JsonQuery& q
         return false;
     }
 
-    bool ans = false;
-
     for (const auto& conjunction : query.GetDisjunction().conjunctions) {
         bool all_predicates_satisfied = true;
-
         for (const auto& predicate : conjunction.predicates) {
-            auto itr = doc.FindMember(predicate.key.c_str());
-
-            if (itr == doc.MemberEnd()) {
+            if (!doc.HasMember(predicate.key.c_str())) {
 #ifndef NDEBUG
                 throw std::runtime_error("Key not found: " + predicate.key);
 #endif
-                return false;
+                all_predicates_satisfied = false;
+                break;
             }
-
-            if (!itr->value.IsString() || !strstr(itr->value.GetString(), predicate.value.c_str())) {
+            const rapidjson::Value& value = doc[predicate.key.c_str()];
+            if (!value.IsString() ||
+                std::string_view(value.GetString(), value.GetStringLength()).find(predicate.value) ==
+                    std::string_view::npos) {
                 all_predicates_satisfied = false;
                 break;
             }
         }
-
         if (all_predicates_satisfied) {
-            ans = true;
-            break;
+            return true;
         }
     }
-
-    return ans;
+    return false;
 }
 
 bool SimdJsonFacade::EvaluateQuery(std::string_view jsonStr, const JsonQuery& query) {
-    simdjson::ondemand::parser parser;
+    static thread_local simdjson::ondemand::parser parser;
     auto json = simdjson::padded_string(jsonStr);
-
     try {
         auto doc = parser.iterate(json);
         auto obj = doc.get_object();
 
-        bool ans = false;
         for (const auto& conjunction : query.GetDisjunction().conjunctions) {
             bool all_predicates_satisfied = true;
-
             for (const auto& predicate : conjunction.predicates) {
-                simdjson::ondemand::value field;
-                auto error = obj[predicate.key].get(field);
-
-                if (error || !field.is_string()) {
+                auto field_result = obj[predicate.key];
+                if (field_result.error() || !field_result.is_string()) {
                     all_predicates_satisfied = false;
                     break;
                 }
-
                 std::string_view field_str;
-                error = field.get_string().get(field_str);
-                if (error || field_str.find(predicate.value) == std::string_view::npos) {
+                if (field_result.get_string().get(field_str) != simdjson::SUCCESS ||
+                    field_str.find(predicate.value) == std::string_view::npos) {
                     all_predicates_satisfied = false;
                     break;
                 }
             }
-
             if (all_predicates_satisfied) {
-                ans = true;
-                break;
+                return true;
             }
         }
-        return ans;
-
+        return false;
     } catch (const simdjson::simdjson_error& e) {
 #ifndef NDEBUG
         throw std::runtime_error(e.what());
