@@ -9,8 +9,8 @@
 #include "node.h"
 
 struct EstimationResult {
-    double average_parse_time;
-    double average_rf_time;
+    double average_parse_time{};
+    double average_rf_time{};
     std::array<std::bitset<kSampleSize>, kTotalMaxRfs> bitsets;
 };
 
@@ -21,7 +21,7 @@ class CascadeEvaluator {
     [[nodiscard]] double EvaluateCascade(const std::shared_ptr<Node>& cascade);
 
    private:
-    const EstimationResult& estimation_result_;
+    EstimationResult estimation_result_;
 
     [[nodiscard]] double EvaluateSubtreeCost(const std::shared_ptr<Node>& subtree,
                                              const std::bitset<kSampleSize>& active_mask);

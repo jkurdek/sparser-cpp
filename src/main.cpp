@@ -1,5 +1,9 @@
+#include <exception>
+#include <iostream>
 #include <memory>
 #include <span>
+#include <string>
+#include <utility>
 
 #include "json_facade.h"
 #include "sparser.h"
@@ -15,10 +19,10 @@ int main(int argc, char* argv[]) {
 
         const std::string filename = args[1];
 
-        Predicate pred1{.key = "text", .value = "Lord of the Rings"};
+        const Predicate pred1{.key = "text", .value = "Lord of the Rings"};
 
-        PredicateConjunction conj1{{pred1}};
-        PredicateDisjunction disj{{conj1}};
+        const PredicateConjunction conj1{{pred1}};
+        const PredicateDisjunction disj{{conj1}};
 
         auto facade = std::make_unique<RapidJsonFacade>();
         auto json_query_driver = std::make_unique<JsonQueryDriver>(std::move(facade));

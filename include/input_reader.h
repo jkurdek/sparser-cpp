@@ -2,6 +2,7 @@
 #define INPUT_READER_H_
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 class InputReader {

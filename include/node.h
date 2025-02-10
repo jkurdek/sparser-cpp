@@ -4,9 +4,11 @@
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <string>
+#include <utility>
 
 #include "raw_filter.h"
-enum class NodeType { INTER, FAIL, PARSE };
+enum class NodeType : std::uint8_t { INTER, FAIL, PARSE };
 
 struct Node {
     uint32_t conjunction_idx;
@@ -21,12 +23,12 @@ struct Node {
         : conjunction_idx(conj_idx),
           predicate_idx(pred_idx),
           raw_filter_idx(rf_idx),
-          left(left_subtree),
-          right(right_subtree),
+          left(std::move(left_subtree)),
+          right(std::move(right_subtree)),
           type(node_type) {}
 };
 
 void PrettyPrint(const std::shared_ptr<Node>& node, const RawFilterData& rf_data, const std::string& prefix = "",
-                 bool isLeft = true, std::ostream& os = std::cout);
+                 bool isLeft = true, std::ostream& outStream = std::cout);
 
 #endif  // NODE_H_

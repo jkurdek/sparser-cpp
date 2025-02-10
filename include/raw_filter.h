@@ -2,7 +2,9 @@
 #define RAW_FILTER_H_
 
 #include <array>
+#include <cstddef>
 #include <string_view>
+#include <vector>
 
 #include "config.h"
 #include "json_facade.h"
@@ -21,7 +23,7 @@ class RawFilterQueryGenerator {
 };
 
 [[nodiscard]] inline size_t GetFlatIdx(size_t conj_idx, size_t pred_idx, size_t rf_idx) {
-    return conj_idx * kMaxPred * kMaxRfsInPred + pred_idx * kMaxRfsInPred + rf_idx;
+    return (conj_idx * kMaxPred * kMaxRfsInPred) + (pred_idx * kMaxRfsInPred) + rf_idx;
 }
 
 #endif  // RAW_FILTER_H_

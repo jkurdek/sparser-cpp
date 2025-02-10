@@ -19,8 +19,8 @@ HeaderFilterRegex: ''
 FormatStyle:     none
 CheckOptions:
   - key: readability-identifier-length.IgnoredVariableNames
-    value: 'x|y|z'
+    value: 'x|y|z|rf'
   - key: readability-identifier-length.IgnoredParameterNames
-    value: 'x|y|z'
+    value: 'x|y|z|rf'
   - key: bugprone-easily-swappable-parameters.MinimumLength
-    value: '3'
+    value: '4'
