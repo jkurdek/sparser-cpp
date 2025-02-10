@@ -2,16 +2,23 @@
 
 #include <array>
 #include <bitset>
+#include <cstddef>
 #include <memory>
 #include <random>
+#include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "cascade_builder.h"
 #include "cascade_evaluator.h"
+#include "config.h"
 #include "json_facade.h"
 #include "node.h"
+#include "raw_filter.h"
+
+// NOLINTBEGIN(*)
 
 TEST(JsonQuery, ToString_ReturnsCorrectFormat) {
     const Predicate pred_1{.key = "name", .value = "John Doe"};
@@ -67,11 +74,12 @@ TEST(RawFilterQueryGenerator, GenerateRawFilters_ProperlyGeneratesRawFilters) {
 
     ASSERT_EQ(expected_rf_data.conj_count, actual.conj_count);
     for (size_t conj_idx = 0; conj_idx < expected_rf_data.conj_count; ++conj_idx) {
-        ASSERT_EQ(expected_rf_data.pred_count[conj_idx], actual.pred_count[conj_idx]);
-        for (size_t pred_idx = 0; pred_idx < expected_rf_data.pred_count[conj_idx]; ++pred_idx) {
-            ASSERT_EQ(expected_rf_data.rf_count[conj_idx][pred_idx], actual.rf_count[conj_idx][pred_idx]);
-            for (size_t rf_idx = 0; rf_idx < expected_rf_data.rf_count[conj_idx][pred_idx]; ++rf_idx) {
-                ASSERT_EQ(expected_rf_data.data[conj_idx][pred_idx][rf_idx], actual.data[conj_idx][pred_idx][rf_idx]);
+        ASSERT_EQ(expected_rf_data.pred_count.at(conj_idx), actual.pred_count.at(conj_idx));
+        for (size_t pred_idx = 0; pred_idx < expected_rf_data.pred_count.at(conj_idx); ++pred_idx) {
+            ASSERT_EQ(expected_rf_data.rf_count.at(conj_idx).at(pred_idx), actual.rf_count.at(conj_idx).at(pred_idx));
+            for (size_t rf_idx = 0; rf_idx < expected_rf_data.rf_count.at(conj_idx).at(pred_idx); ++rf_idx) {
+                ASSERT_EQ(expected_rf_data.data.at(conj_idx).at(pred_idx).at(rf_idx),
+                          actual.data.at(conj_idx).at(pred_idx).at(rf_idx));
             }
         }
     }
@@ -96,7 +104,7 @@ TEST(JsonQueryDriver, RunQuery_AllPredicatesMatch_ReturnsTrue) {
     auto facade = std::make_unique<RapidJsonFacade>();
     JsonQueryDriver driver(std::move(facade));
 
-    std::string_view testJson = R"({"name":"John Doe","age":"30","city":"New York"})";
+    const std::string_view testJson = R"({"name":"John Doe","age":"30","city":"New York"})";
 
     Predicate pred1{.key = "name", .value = "John Doe"};
     Predicate pred2{.key = "age", .value = "30"};
@@ -104,10 +112,10 @@ TEST(JsonQueryDriver, RunQuery_AllPredicatesMatch_ReturnsTrue) {
 
     PredicateConjunction conj1{{pred1, pred2}};
     PredicateConjunction conj2{{pred3}};
-    PredicateDisjunction disj{{conj1, conj2}};
-    JsonQuery query(disj);
+    PredicateDisjunction const disj{{conj1, conj2}};
+    const JsonQuery query(disj);
 
-    bool result = driver.RunQuery(testJson, query);
+    const bool result = driver.RunQuery(testJson, query);
     EXPECT_TRUE(result) << "Expected the query to match since the JSON satisfies conjunction 1.";
 }
 
@@ -115,7 +123,7 @@ TEST(JsonQueryDriver, RunQuery_NoPredicatesMatch_ReturnsFalse) {
     auto facade = std::make_unique<RapidJsonFacade>();
     JsonQueryDriver driver(std::move(facade));
 
-    std::string_view testJson = R"({"name":"Alice","age":"25","city":"Chicago"})";
+    const std::string_view testJson = R"({"name":"Alice","age":"25","city":"Chicago"})";
 
     Predicate pred1{.key = "name", .value = "John Doe"};
     Predicate pred2{.key = "age", .value = "30"};
@@ -123,10 +131,10 @@ TEST(JsonQueryDriver, RunQuery_NoPredicatesMatch_ReturnsFalse) {
 
     PredicateConjunction conj1{{pred1, pred2}};
     PredicateConjunction conj2{{pred3}};
-    PredicateDisjunction disj{{conj1, conj2}};
-    JsonQuery query(disj);
+    PredicateDisjunction const disj{{conj1, conj2}};
+    const JsonQuery query(disj);
 
-    bool result = driver.RunQuery(testJson, query);
+    const bool result = driver.RunQuery(testJson, query);
     EXPECT_FALSE(result) << "Expected the query NOT to match since none of the predicates match.";
 }
 
@@ -134,16 +142,16 @@ TEST(JsonQueryDriver, RunQuery_PartialConjunctionMismatch_ReturnsFalse) {
     auto facade = std::make_unique<RapidJsonFacade>();
     JsonQueryDriver driver(std::move(facade));
 
-    std::string_view testJson = R"({"name":"John Doe","age":"25"})";
+    const std::string_view testJson = R"({"name":"John Doe","age":"25"})";
 
     Predicate pred1{.key = "name", .value = "John Doe"};
     Predicate pred2{.key = "age", .value = "30"};
 
     PredicateConjunction conj1{{pred1, pred2}};
-    PredicateDisjunction disj{{conj1}};
-    JsonQuery query(disj);
+    const PredicateDisjunction disj{{conj1}};
+    const JsonQuery query(disj);
 
-    bool result = driver.RunQuery(testJson, query);
+    const bool result = driver.RunQuery(testJson, query);
     EXPECT_FALSE(result) << "Expected the query NOT to match because the age mismatch fails the conjunction.";
 }
 
@@ -156,9 +164,8 @@ TEST(CascadeBuilder, GenerateValidCascades_ValidDisjunction_ReturnsExpectedCount
     PredicateConjunction conj2{{
         pred3,
     }};
-    PredicateDisjunction disj{{conj1, conj2}};
-
-    RawFilterData raw_filter_data = RawFilterQueryGenerator::GenerateRawFilters(disj);
+    const PredicateDisjunction disj{{conj1, conj2}};
+    const RawFilterData raw_filter_data = RawFilterQueryGenerator::GenerateRawFilters(disj);
 
     CascadeBuilder builder(disj, raw_filter_data);
     auto valid_cascades = builder.GenerateValidCascades();
@@ -166,8 +173,8 @@ TEST(CascadeBuilder, GenerateValidCascades_ValidDisjunction_ReturnsExpectedCount
     ASSERT_EQ(8, valid_cascades.size());
 }
 
-void ValidateFailNodePaths(const std::shared_ptr<Node>& root, std::vector<bool>& conj_used,
-                           const size_t total_conjunctions, bool& test_failure) {
+static void ValidateFailNodePaths(const std::shared_ptr<Node>& root, std::vector<bool>& conj_used,
+                                  const size_t total_conjunctions, bool& test_failure) {
     if (!root) {
         throw std::runtime_error("Root node is null.");
     }
@@ -179,7 +186,7 @@ void ValidateFailNodePaths(const std::shared_ptr<Node>& root, std::vector<bool>&
     }
 
     if (root->type == NodeType::FAIL) {
-        for (bool used : conj_used) {
+        for (const bool used : conj_used) {
             if (!used) {
                 test_failure = true;
                 return;
@@ -205,9 +212,9 @@ TEST(CascadeBuilder, FailPaths_IncludeAllConjunctions) {
 
     PredicateConjunction conj1{{pred1, pred2}};
     PredicateConjunction conj2{{pred3}};
-    PredicateDisjunction disj{{conj1, conj2}};
+    const PredicateDisjunction disj{{conj1, conj2}};
 
-    RawFilterData raw_filter_data = RawFilterQueryGenerator::GenerateRawFilters(disj);
+    const RawFilterData raw_filter_data = RawFilterQueryGenerator::GenerateRawFilters(disj);
 
     CascadeBuilder builder(disj, raw_filter_data);
     auto valid_cascades = builder.GenerateValidCascades();
@@ -230,9 +237,9 @@ TEST(CascadeBuilder, FailPaths_IncludeAllConjunctions) {
 }
 
 template <std::size_t N>
-void fillArrayWithRandomValues(std::array<unsigned long long, N>& arr, double minValue, double maxValue) {
-    std::random_device rd;
-    std::mt19937 generator(rd());
+static void fillArrayWithRandomValues(std::array<unsigned long long, N>& arr, double minValue, double maxValue) {
+    std::random_device rand_dev;
+    std::mt19937 generator(rand_dev());
     std::uniform_real_distribution<double> distribution(minValue, maxValue);
 
     for (auto& element : arr) {
@@ -241,10 +248,10 @@ void fillArrayWithRandomValues(std::array<unsigned long long, N>& arr, double mi
 }
 
 template <std::size_t M, std::size_t N>
-void fillArrayWithRandomValues(std::array<std::bitset<M>, N>& arr) {
-    std::random_device rd;
-    std::mt19937 generator(rd());
-    std::mt19937 gen(rd());
+static void fillArrayWithRandomValues(std::array<std::bitset<M>, N>& arr) {
+    std::random_device rand_dev;
+    std::mt19937 generator(rand_dev());
+    std::mt19937 gen(rand_dev());
     std::uniform_int_distribution<int> dist(0, 1);
 
     for (auto& element : arr) {
@@ -262,21 +269,21 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_1_Conj_1_Rf_ReturnsExpectedE
      *
      */
 
-    double precision = 1e-6;
+    const double precision = 1e-6;
     auto estimation_result = EstimationResult{.average_parse_time = 100, .average_rf_time = 2.0, .bitsets = {}};
 
     fillArrayWithRandomValues(estimation_result.bitsets);
 
     estimation_result.bitsets[0] = 0b1111000000;
 
-    std::shared_ptr<Node> left = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::FAIL);
-    std::shared_ptr<Node> right = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::PARSE);
-    std::shared_ptr<Node> root = std::make_shared<Node>(0, 0, 0, left, right, NodeType::INTER);
+    const std::shared_ptr<Node> left = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::FAIL);
+    const std::shared_ptr<Node> right = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::PARSE);
+    const std::shared_ptr<Node> root = std::make_shared<Node>(0, 0, 0, left, right, NodeType::INTER);
 
     CascadeEvaluator evaluator(estimation_result);
-    double result = evaluator.EvaluateCascade(root);
+    const double result = evaluator.EvaluateCascade(root);
 
-    double expected = 1.0 * 2 + 0.4 * 100;  // RF_0 cost + Total parser cost
+    const double expected = (1.0 * 2) + (0.4 * 100);  // RF_0 cost + Total parser cost
     EXPECT_NEAR(expected, result, precision);
 }
 
@@ -290,7 +297,7 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_1_Conj_2_Rfs_ReturnsExpected
      *
      */
 
-    double precision = 1e-6;
+    const double precision = 1e-6;
     auto estimation_result = EstimationResult{
         .average_parse_time = 100,
         .average_rf_time = 2.0,
@@ -301,15 +308,15 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_1_Conj_2_Rfs_ReturnsExpected
     estimation_result.bitsets[0] = 0b1111000000;
     estimation_result.bitsets[1] = 0b1100000001;
 
-    std::shared_ptr<Node> fail = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::FAIL);
-    std::shared_ptr<Node> parse = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::PARSE);
-    std::shared_ptr<Node> inter = std::make_shared<Node>(0, 0, 1, fail, parse, NodeType::INTER);
-    std::shared_ptr<Node> root = std::make_shared<Node>(0, 0, 0, fail, inter, NodeType::INTER);
+    const std::shared_ptr<Node> fail = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::FAIL);
+    const std::shared_ptr<Node> parse = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::PARSE);
+    const std::shared_ptr<Node> inter = std::make_shared<Node>(0, 0, 1, fail, parse, NodeType::INTER);
+    const std::shared_ptr<Node> root = std::make_shared<Node>(0, 0, 0, fail, inter, NodeType::INTER);
 
     CascadeEvaluator evaluator(estimation_result);
-    double result = evaluator.EvaluateCascade(root);
+    const double result = evaluator.EvaluateCascade(root);
 
-    double expected = 1.0 * 2 + 0.4 * 2 + 0.2 * 100;  // RF_0 cost + RF_1 cost + Total parser cost
+    const double expected = (1.0 * 2) + (0.4 * 2) + (0.2 * 100);  // RF_0 cost + RF_1 cost + Total parser cost
     EXPECT_NEAR(expected, result, precision);
 }
 
@@ -325,7 +332,7 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_2_conj_2_preds_2_rfs_Returns
      *
      */
 
-    double precision = 1e-6;
+    double const precision = 1e-6;
     auto estimation_result = EstimationResult{.average_parse_time = 100, .average_rf_time = 5, .bitsets = {}};
     fillArrayWithRandomValues(estimation_result.bitsets);
 
@@ -334,21 +341,25 @@ TEST(CascadeEvaluator, EvaluateCascade_ValidCascade_2_conj_2_preds_2_rfs_Returns
     estimation_result.bitsets[GetFlatIdx(0, 0, 0)] = 0b1011100110;
     estimation_result.bitsets[GetFlatIdx(0, 1, 2)] = 0b1110000001;
 
-    std::shared_ptr<Node> fail = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::FAIL);
-    std::shared_ptr<Node> parse = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::PARSE);
+    const std::shared_ptr<Node> fail = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::FAIL);
+    const std::shared_ptr<Node> parse = std::make_shared<Node>(0, 0, 0, nullptr, nullptr, NodeType::PARSE);
 
-    std::shared_ptr<Node> node_0_0_0_right = std::make_shared<Node>(0, 0, 0, fail, parse, NodeType::INTER);
-    std::shared_ptr<Node> node_1_1_1_right = std::make_shared<Node>(1, 1, 1, node_0_0_0_right, parse, NodeType::INTER);
+    const std::shared_ptr<Node> node_0_0_0_right = std::make_shared<Node>(0, 0, 0, fail, parse, NodeType::INTER);
+    const std::shared_ptr<Node> node_1_1_1_right =
+        std::make_shared<Node>(1, 1, 1, node_0_0_0_right, parse, NodeType::INTER);
 
-    std::shared_ptr<Node> node_0_1_2_left = std::make_shared<Node>(0, 1, 2, fail, parse, NodeType::INTER);
-    std::shared_ptr<Node> node_0_0_0_left = std::make_shared<Node>(0, 0, 0, fail, node_0_1_2_left, NodeType::INTER);
+    const std::shared_ptr<Node> node_0_1_2_left = std::make_shared<Node>(0, 1, 2, fail, parse, NodeType::INTER);
+    const std::shared_ptr<Node> node_0_0_0_left =
+        std::make_shared<Node>(0, 0, 0, fail, node_0_1_2_left, NodeType::INTER);
 
-    std::shared_ptr<Node> node_1_0_1_root =
+    const std::shared_ptr<Node> node_1_0_1_root =
         std::make_shared<Node>(1, 0, 1, node_0_0_0_left, node_1_1_1_right, NodeType::INTER);
 
     CascadeEvaluator evaluator(estimation_result);
-    double result = evaluator.EvaluateCascade(node_1_0_1_root);
+    const double result = evaluator.EvaluateCascade(node_1_0_1_root);
 
-    double expected = 1.0 * 5 + 0.4 * 5 + 0.7 * 5 + 0.4 * 5 + 0.6 * 100;
+    const double expected = 1.0 * 5 + (0.4 * 5) + (0.7 * 5) + (0.4 * 5) + (0.6 * 100);
     EXPECT_NEAR(expected, result, precision);
 }
+
+// NOLINTEND(*)

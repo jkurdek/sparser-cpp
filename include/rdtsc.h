@@ -1,6 +1,8 @@
 #ifndef __RDTSC_H_DEFINED__
 #define __RDTSC_H_DEFINED__
 
+// NOLINTBEGIN(*)
+
 #include <cstdint>
 
 #if defined(__x86_64__)
@@ -26,3 +28,5 @@ static __inline__ uint64_t rdtsc(void) {
 #endif
 
 #endif  // __RDTSC_H_DEFINED__
+
+// NOLINTEND(*)
