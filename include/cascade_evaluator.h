@@ -23,8 +23,8 @@ class CascadeEvaluator {
    private:
     EstimationResult estimation_result_;
 
-    [[nodiscard]] double EvaluateSubtreeCost(const std::shared_ptr<Node>& subtree,
-                                             const std::bitset<kSampleSize>& active_mask);
+    [[nodiscard]] double EvaluateSubtreeCost(const std::shared_ptr<Node>& node,
+                                             const std::bitset<kSampleSize>& passed_records);
 };
 
 #endif  // CASCADE_EVALUATOR_H_

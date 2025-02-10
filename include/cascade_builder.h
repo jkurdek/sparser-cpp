@@ -3,10 +3,10 @@
 
 #include <array>
 #include <bitset>
+#include <cstddef>
+#include <memory>
 #include <utility>
 #include <vector>
-#include <memory>
-#include <cstddef>
 
 #include "config.h"
 #include "json_facade.h"
@@ -15,7 +15,7 @@
 
 class CascadeBuilder {
    public:
-    CascadeBuilder(PredicateDisjunction  disjunction, const RawFilterData& raw_filter_data)
+    CascadeBuilder(PredicateDisjunction disjunction, const RawFilterData& raw_filter_data)
         : disjunction_(std::move(disjunction)), rf_data_(raw_filter_data) {}
 
     [[nodiscard]] std::vector<std::shared_ptr<Node>> GenerateValidCascades();
@@ -29,8 +29,7 @@ class CascadeBuilder {
     std::array<std::array<std::bitset<kMaxRfsInPred>, kMaxPred>, kMaxConj> used_rfs_;
 
     [[nodiscard]] std::vector<std::shared_ptr<Node>> HandleFail(const size_t current_depth);
-    [[nodiscard]] std::vector<std::shared_ptr<Node>> HandleSuccess(const size_t current_depth,
-                                                                   const size_t conjunction_idx);
+    [[nodiscard]] std::vector<std::shared_ptr<Node>> HandleSuccess(const size_t current_depth, const size_t conj_idx);
 };
 
 #endif  // CASCADE_BUILDER_H_

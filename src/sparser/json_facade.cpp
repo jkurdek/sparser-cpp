@@ -1,8 +1,9 @@
 #include "json_facade.h"
 
+#include <rapidjson/error/error.h>
 #include <simdjson.h>
 
-#include <cstring>
+#include <ostream>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -32,16 +33,16 @@ std::string JsonQuery::ToString() const {
     return oss.str();
 }
 
-std::ostream& operator<<(std::ostream& os, const JsonQuery& query) {
-    os << query.ToString();
-    return os;
+std::ostream& operator<<(std::ostream& outStream, const JsonQuery& query) {
+    outStream << query.ToString();
+    return outStream;
 }
 
 bool RapidJsonFacade::EvaluateQuery(std::string_view jsonStr, const JsonQuery& query) {
     static thread_local rapidjson::Document doc;
-    rapidjson::ParseResult ok = doc.Parse(jsonStr.data(), jsonStr.size());
+    const rapidjson::ParseResult parseResult = doc.Parse(jsonStr.data(), jsonStr.size());
 
-    if (!ok || !doc.IsObject()) {
+    if ((parseResult == nullptr) || !doc.IsObject()) {
 #ifndef NDEBUG
         throw std::runtime_error("Failed to parse JSON string");
 #endif
@@ -75,29 +76,29 @@ bool RapidJsonFacade::EvaluateQuery(std::string_view jsonStr, const JsonQuery& q
 
 bool SimdJsonFacade::EvaluateQuery(std::string_view jsonStr, const JsonQuery& query) {
     static thread_local simdjson::dom::parser parser;
-    
+
     try {
-        simdjson::dom::element doc = parser.parse(jsonStr.data(), jsonStr.size());
-        
+        const simdjson::dom::element doc = parser.parse(jsonStr.data(), jsonStr.size());
+
         for (const auto& conjunction : query.GetDisjunction().conjunctions) {
             bool all_predicates_satisfied = true;
-            
+
             for (const auto& predicate : conjunction.predicates) {
                 simdjson::dom::element field;
                 auto error = doc[predicate.key].get(field);
-                
-                if (error || !field.is_string()) {
+
+                if ((error != 0U) || !field.is_string()) {
                     all_predicates_satisfied = false;
                     break;
                 }
-                
-                std::string_view field_str = field.get_string().value();
+
+                const std::string_view field_str = field.get_string().value();
                 if (field_str.find(predicate.value) == std::string_view::npos) {
                     all_predicates_satisfied = false;
                     break;
                 }
             }
-            
+
             if (all_predicates_satisfied) {
                 return true;
             }

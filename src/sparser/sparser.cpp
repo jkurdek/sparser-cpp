@@ -3,17 +3,24 @@
 #include <array>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <iostream>
+#include <limits>
 #include <memory>
+#include <print>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include "cascade_builder.h"
+#include "cascade_evaluator.h"
 #include "common.h"
+#include "config.h"
 #include "input_reader.h"
 #include "json_facade.h"
+#include "node.h"
+#include "raw_filter.h"
 #include "rdtsc.h"
 
 EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, const JsonQuery& json_query,
@@ -29,9 +36,9 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
     for (size_t i = 0; i < kSampleSize; i++) {
         auto json_row = input[i];
         for (uint32_t conj_idx = 0; conj_idx < rf_data.conj_count; conj_idx++) {
-            for (uint32_t pred_idx = 0; pred_idx < rf_data.pred_count[conj_idx]; pred_idx++) {
-                for (uint32_t rf_idx = 0; rf_idx < rf_data.rf_count[conj_idx][pred_idx]; rf_idx++) {
-                    auto rf = rf_data.data[conj_idx][pred_idx][rf_idx];
+            for (uint32_t pred_idx = 0; pred_idx < rf_data.pred_count.at(conj_idx); pred_idx++) {
+                for (uint32_t rf_idx = 0; rf_idx < rf_data.rf_count.at(conj_idx).at(pred_idx); rf_idx++) {
+                    auto rf = rf_data.data.at(conj_idx).at(pred_idx).at(rf_idx);
 #ifndef NDEBUG
                     std::cout << "Grepping... : " << rf << "\n";
 #endif
@@ -42,7 +49,7 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
                     auto find_result = json_row.find(rf);
                     auto grepEnd = rdtsc();
 
-                    double rf_runtime = grepEnd - grepStart;
+                    const auto rf_runtime = static_cast<double>(grepEnd - grepStart);
                     total_rf_time += rf_runtime;
                     rf_count++;
 
@@ -50,7 +57,7 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
 #ifndef NDEBUG
                         std::cout << "Found: " << rf << "\n";
 #endif
-                        result.bitsets[idx].set(i);
+                        result.bitsets.at(idx).set(i);
                     } else {
 #ifndef NDEBUG
                         std::cout << "Not found: " << rf << "\n";
@@ -63,26 +70,26 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
         auto json_query_start = rdtsc();
         auto query_result = json_query_driver_->RunQuery(input[i], json_query);
         (void)query_result;  // explicitly ignore the result
-        total_parser_time += (rdtsc() - json_query_start);
+        total_parser_time += static_cast<double>(rdtsc() - json_query_start);
     }
 
-    result.average_rf_time = total_rf_time / rf_count;
+    result.average_rf_time = total_rf_time / static_cast<double>(rf_count);
     result.average_parse_time = total_parser_time / kSampleSize;
-    std::cout << "Average rf time: " << result.average_rf_time << std::endl;
-    std::cout << "Average full parse time: " << result.average_parse_time << std::endl;
+    std::cout << "Average rf time: " << result.average_rf_time << '\n';
+    std::cout << "Average full parse time: " << result.average_parse_time << '\n';
     return result;
 }
 
 void Sparser::Run(const std::string& input_path, const JsonQuery& json_query) {
     std::cout << "Running Sparser\n";
-    SparserConfig config{.input_path = input_path, .json_query = json_query};
+    const SparserConfig config{.input_path = input_path, .json_query = json_query};
     config.PrintConfig();
     auto input_reader = InputReader();
     auto file_data = input_reader.ReadFile(input_path);
     auto sparser_time_start = benchmark_start();
     auto sparser_input = input_reader.ReadRecords(file_data);
 
-    auto disjunction = json_query.GetDisjunction();
+    const auto& disjunction = json_query.GetDisjunction();
     auto rf_data = RawFilterQueryGenerator::GenerateRawFilters(disjunction);
     auto estimation_result = Calibrate(sparser_input, json_query, rf_data);
 
@@ -109,8 +116,8 @@ void Sparser::Run(const std::string& input_path, const JsonQuery& json_query) {
     PrettyPrint(best_cascade, rf_data);
     std::cout << "Best cascade cost: " << min_cost << "\n\n";
 
-    printf("Sparser:\t\x1b[1;33mResult: %ld (Execution Time: %f seconds)\x1b[0m\n", stats.records_matched,
-           sparser_time);
+    std::println("Sparser:\t\x1b[1;33mResult: {} (Execution Time: {:f} seconds)\x1b[0m", stats.records_matched,
+                 sparser_time);
 
     stats.PrintStats();
 
@@ -120,19 +127,19 @@ void Sparser::Run(const std::string& input_path, const JsonQuery& json_query) {
     auto naive_stats = SearchNaive(naive_input, json_query);
     auto naive_time = benchmark_stop(naive_time_start);
 
-    printf("Naive:\t\x1b[1;33mResult: %ld (Execution Time: %f seconds)\x1b[0m\n", naive_stats.callback_passed,
-           naive_time);
+    std::println("Naive:\t\x1b[1;33mResult: {} (Execution Time: {:f} seconds)\x1b[0m", naive_stats.callback_passed,
+                 naive_time);
 }
 
 SparserSearchStats Sparser::SearchCascade(const std::vector<std::string_view>& input, const JsonQuery& json_query,
-                                          const RawFilterData& rf_data, const std::shared_ptr<Node> node) {
+                                          const RawFilterData& rf_data, const std::shared_ptr<Node>& node) {
     size_t sparser_match = 0;
     size_t sparser_count = 0;
 
     for (const auto& record : input) {
         auto root = node;
         while (root->type == NodeType::INTER) {
-            auto rf = rf_data.data[root->conjunction_idx][root->predicate_idx][root->raw_filter_idx];
+            auto rf = rf_data.data.at(root->conjunction_idx).at(root->predicate_idx).at(root->raw_filter_idx);
 
             auto find_result = record.find(rf);
             if (find_result != std::string_view::npos) {

@@ -19,7 +19,8 @@ struct RawFilterData {
 class RawFilterQueryGenerator {
    public:
     [[nodiscard]] static RawFilterData GenerateRawFilters(const PredicateDisjunction& disjunction);
-    [[nodiscard]] static std::vector<std::string_view> GenerateRawFiltersFromPredicate(const std::string_view& input);
+    [[nodiscard]] static std::vector<std::string_view> GenerateRawFiltersFromPredicate(
+        const std::string_view& predicate);
 };
 
 [[nodiscard]] inline size_t GetFlatIdx(size_t conj_idx, size_t pred_idx, size_t rf_idx) {

@@ -1,5 +1,12 @@
 #include "raw_filter.h"
 
+#include <cstddef>
+#include <string_view>
+#include <vector>
+
+#include "config.h"
+#include "json_facade.h"
+
 RawFilterData RawFilterQueryGenerator::GenerateRawFilters(const PredicateDisjunction& disjunction) {
     RawFilterData rf_data;
     for (size_t conj_idx = 0; conj_idx < disjunction.conjunctions.size(); ++conj_idx) {
@@ -8,10 +15,10 @@ RawFilterData RawFilterQueryGenerator::GenerateRawFilters(const PredicateDisjunc
             const auto& predicate = conjunction.predicates[pred_idx];
             auto raw_filters = GenerateRawFiltersFromPredicate(predicate.value);
             for (size_t rf_idx = 0; rf_idx < raw_filters.size(); ++rf_idx) {
-                rf_data.data[conj_idx][pred_idx][rf_idx] = raw_filters[rf_idx];
-                rf_data.rf_count[conj_idx][pred_idx]++;
+                rf_data.data.at(conj_idx).at(pred_idx).at(rf_idx) = raw_filters[rf_idx];
+                rf_data.rf_count.at(conj_idx).at(pred_idx)++;
             }
-            rf_data.pred_count[conj_idx]++;
+            rf_data.pred_count.at(conj_idx)++;
         }
         rf_data.conj_count++;
     }
@@ -21,6 +28,7 @@ RawFilterData RawFilterQueryGenerator::GenerateRawFilters(const PredicateDisjunc
 std::vector<std::string_view> RawFilterQueryGenerator::GenerateRawFiltersFromPredicate(
     const std::string_view& predicate) {
     std::vector<std::string_view> rawFilters;
+    rawFilters.reserve(predicate.size() - kRfSize + 1);
     for (size_t i = 0; i < predicate.size() - kRfSize + 1; ++i) {
         rawFilters.emplace_back(predicate.substr(i, kRfSize));
     }
