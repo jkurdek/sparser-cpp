@@ -1,7 +1,7 @@
+// NOLINTBEGIN(*)
+
 #ifndef __RDTSC_H_DEFINED__
 #define __RDTSC_H_DEFINED__
-
-// NOLINTBEGIN(*)
 
 #include <cstdint>
 

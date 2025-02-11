@@ -53,7 +53,7 @@ class Sparser {
                                              const RawFilterData& rf_data);
     [[nodiscard]] SparserSearchStats SearchCascade(const std::vector<std::string_view>& input,
                                                    const JsonQuery& json_query, const RawFilterData& rf_data,
-                                                   const std::shared_ptr<Node>&);
+                                                   const std::shared_ptr<Node>& node);
     [[nodiscard]] NaiveSearchStats SearchNaive(const std::vector<std::string_view>& input, const JsonQuery& json_query);
 
    private:
