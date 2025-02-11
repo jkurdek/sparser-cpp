@@ -25,11 +25,7 @@
             "description": "Preset for ARM macOS",
             "cacheVariables": {
                 "CMAKE_SYSTEM_NAME": "Darwin",
-                "VCPKG_TARGET_TRIPLET": "arm64-osx",
-                "ENABLE_CLANG_TIDY": {
-                    "value": "ON",
-                    "type": "BOOL"
-                }
+                "VCPKG_TARGET_TRIPLET": "arm64-osx"
             }
         },
         {
