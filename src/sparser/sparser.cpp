@@ -22,6 +22,7 @@
 #include "node.h"
 #include "raw_filter.h"
 #include "rdtsc.h"
+#include "simd_search.h"
 
 EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, const JsonQuery& json_query,
                                     const RawFilterData& rf_data) {
@@ -46,14 +47,14 @@ EstimationResult Sparser::Calibrate(const std::vector<std::string_view>& input, 
                     auto idx = GetFlatIdx(conj_idx, pred_idx, rf_idx);
 
                     auto grepStart = rdtsc();
-                    auto find_result = json_row.find(rf);
+                    auto find_result = simd_search4(json_row, rf);
                     auto grepEnd = rdtsc();
 
                     const auto rf_runtime = static_cast<double>(grepEnd - grepStart);
                     total_rf_time += rf_runtime;
                     rf_count++;
 
-                    if (find_result != std::string_view::npos) {
+                    if (find_result) {
 #ifndef NDEBUG
                         std::cout << "Found: " << rf << "\n";
 #endif
@@ -91,10 +92,15 @@ void Sparser::Run(const std::string& input_path, const JsonQuery& json_query) {
 
     const auto& disjunction = json_query.GetDisjunction();
     auto rf_data = RawFilterQueryGenerator::GenerateRawFilters(disjunction);
+
+    auto calibrate_time_start = benchmark_start();
     auto estimation_result = Calibrate(sparser_input, json_query, rf_data);
+    auto calibrate_time = benchmark_stop(calibrate_time_start);
+    std::cout << "Calibration time: " << calibrate_time << '\n';
 
     auto cascade_builder = CascadeBuilder(disjunction, rf_data);
     auto valid_cascades = cascade_builder.GenerateValidCascades();
+    std::cout << "Generated " << valid_cascades.size() << " valid cascades\n";
 
     auto cascade_evaluator = CascadeEvaluator(estimation_result);
     double min_cost = std::numeric_limits<double>::max();
@@ -141,8 +147,8 @@ SparserSearchStats Sparser::SearchCascade(const std::vector<std::string_view>& i
         while (root->type == NodeType::INTER) {
             auto rf = rf_data.data.at(root->conjunction_idx).at(root->predicate_idx).at(root->raw_filter_idx);
 
-            auto find_result = record.find(rf);
-            if (find_result != std::string_view::npos) {
+            auto find_result = simd_search4(record, rf);
+            if (find_result) {
                 root = root->right;
             } else {
                 root = root->left;
