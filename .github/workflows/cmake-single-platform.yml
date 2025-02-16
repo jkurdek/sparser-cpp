@@ -29,7 +29,7 @@ jobs:
     - name: Run CMake consuming CMakePreset.json and run vcpkg to build packages
       uses: lukka/run-cmake@v10
       with:
-        configurePreset: 'linux-x64'
+        configurePreset: 'linux-x64-debug'
 
     - name: Build
       # Build your program with the given configuration

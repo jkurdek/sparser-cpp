@@ -30,11 +30,20 @@
         },
         {
             "name": "linux-x64",
+            "hidden": true,
             "inherits": "base",
             "description": "Preset for x64 Linux",
             "cacheVariables": {
                 "CMAKE_SYSTEM_NAME": "Linux",
                 "VCPKG_TARGET_TRIPLET": "x64-linux"
+            }
+        },
+        {
+            "name": "linux-x64-debug",
+            "inherits": "linux-x64",
+            "description": "Debug preset for x64 Linux",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
             }
         },
         {
@@ -79,6 +88,24 @@
         {
             "name": "macos-arm-debug",
             "configurePreset": "macos-arm-debug",
+            "configuration": "Debug",
+            "jobs": 0,
+            "targets": [
+                "all"
+            ]
+        },
+        {
+            "name": "linux-x64-release",
+            "configurePreset": "linux-x64-release",
+            "configuration": "Release",
+            "jobs": 0,
+            "targets": [
+                "all"
+            ]
+        },
+        {
+            "name": "linux-x64-debug",
+            "configurePreset": "linux-x64-debug",
             "configuration": "Debug",
             "jobs": 0,
             "targets": [
