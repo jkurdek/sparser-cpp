@@ -8,7 +8,6 @@
 #include <iostream>
 #include <limits>
 #include <memory>
-#include <print>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -122,8 +121,8 @@ void Sparser::Run(const std::string& input_path, const JsonQuery& json_query) {
     PrettyPrint(best_cascade, rf_data);
     std::cout << "Best cascade cost: " << min_cost << "\n\n";
 
-    std::println("Sparser:\t\x1b[1;33mResult: {} (Execution Time: {:f} seconds)\x1b[0m", stats.records_matched,
-                 sparser_time);
+    std::cout << "Sparser:\t\x1b[1;33mResult: " << stats.records_matched << " (Execution Time: " << sparser_time
+              << " seconds)\x1b[0m" << '\n';
 
     stats.PrintStats();
 
@@ -133,8 +132,8 @@ void Sparser::Run(const std::string& input_path, const JsonQuery& json_query) {
     auto naive_stats = SearchNaive(naive_input, json_query);
     auto naive_time = benchmark_stop(naive_time_start);
 
-    std::println("Naive:\t\x1b[1;33mResult: {} (Execution Time: {:f} seconds)\x1b[0m", naive_stats.callback_passed,
-                 naive_time);
+    std::cout << "Naive:\t\x1b[1;33mResult: " << naive_stats.callback_passed << " (Execution Time: " << naive_time
+              << " seconds)\x1b[0m" << '\n';
 }
 
 SparserSearchStats Sparser::SearchCascade(const std::vector<std::string_view>& input, const JsonQuery& json_query,
