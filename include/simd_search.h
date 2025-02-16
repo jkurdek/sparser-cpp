@@ -11,6 +11,10 @@
 #include <arm_neon.h>
 #endif
 
+#ifdef __x86_64__
+#include <immintrin.h>
+#endif
+
 #ifdef __ARM_NEON
 inline bool simd_search4(std::string_view haystack, std::string_view needle) {
     if (haystack.size() < 4) {
@@ -41,6 +45,48 @@ inline bool simd_search4(std::string_view haystack, std::string_view needle) {
         if (vmaxvq_u32(combined)) return true;
         curr += 13;
     }
+    while (curr <= end) {
+        if (*reinterpret_cast<const uint32_t*>(curr) == needle_val) {
+            return true;
+        }
+        ++curr;
+    }
+    return false;
+}
+#elif defined(__x86_64__)
+inline bool simd_search4(std::string_view haystack, std::string_view needle) {
+    if (haystack.size() < 4) {
+        return false;
+    }
+
+    const uint32_t needle_val = *reinterpret_cast<const uint32_t*>(needle.data());
+    const __m256i needle_vec = _mm256_set1_epi32(needle_val);
+
+    const char* data = haystack.data();
+    const size_t haystack_len = haystack.size();
+    const auto* curr = reinterpret_cast<const uint8_t*>(data);
+    const uint8_t* end = curr + haystack_len - 3;
+
+    while (curr + 32 <= end) {
+        __m256i data0 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(curr + 0));
+        __m256i data1 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(curr + 1));
+        __m256i data2 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(curr + 2));
+        __m256i data3 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(curr + 3));
+
+        __m256i eq0 = _mm256_cmpeq_epi32(data0, needle_vec);
+        __m256i eq1 = _mm256_cmpeq_epi32(data1, needle_vec);
+        __m256i eq2 = _mm256_cmpeq_epi32(data2, needle_vec);
+        __m256i eq3 = _mm256_cmpeq_epi32(data3, needle_vec);
+
+        __m256i combined = _mm256_or_si256(
+            _mm256_or_si256(eq0, eq1),
+            _mm256_or_si256(eq2, eq3)
+        );
+
+        if (_mm256_movemask_epi8(combined)) return true;
+        curr += 29;
+    }
+
     while (curr <= end) {
         if (*reinterpret_cast<const uint32_t*>(curr) == needle_val) {
             return true;
