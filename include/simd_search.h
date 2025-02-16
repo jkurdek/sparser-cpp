@@ -53,7 +53,8 @@ inline bool simd_search4(std::string_view haystack, std::string_view needle) {
     }
     return false;
 }
-#elif defined(__x86_64__)
+#elif defined(__AVX2__)
+__attribute__((target("avx2")))
 inline bool simd_search4(std::string_view haystack, std::string_view needle) {
     if (haystack.size() < 4) {
         return false;
