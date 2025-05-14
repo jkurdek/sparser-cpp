@@ -43,7 +43,7 @@ cmake --build build
 ### Run
 
 ```sh
-./build/SparserMain <input_file>
+./build/src/SparserMain <input_file>
 ```
 
 ## Testing
