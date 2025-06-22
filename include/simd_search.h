@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
+#include <string>
 
 #ifdef __ARM_NEON
 #include <arm_neon.h>
@@ -16,6 +17,60 @@
 #endif
 
 #ifdef __ARM_NEON
+
+// http://0x80.pl/notesen/2016-11-28-simd-strfind.html#arm-neon-32-bit-code
+inline size_t neon_strstr_anysize(std::string_view haystack, std::string_view needle) {
+    const char* s = haystack.data();
+    const size_t n = haystack.size();
+    const char* needle_data = needle.data();
+    const size_t k = needle.size();
+
+    const uint8x16_t first = vdupq_n_u8(needle_data[0]);
+    const uint8x16_t last  = vdupq_n_u8(needle_data[k - 1]);
+    const uint8x8_t  half  = vdup_n_u8(0x0f);
+
+    const uint8_t* ptr = reinterpret_cast<const uint8_t*>(s);
+
+    union {
+        uint8_t  tmp[8];
+        uint32_t word[2];
+    };
+
+    for (size_t i = 0; i < n; i += 16) {
+
+        const uint8x16_t block_first = vld1q_u8(ptr + i);
+        const uint8x16_t block_last  = vld1q_u8(ptr + i + k - 1);
+
+        const uint8x16_t eq_first = vceqq_u8(first, block_first);
+        const uint8x16_t eq_last  = vceqq_u8(last, block_last);
+        const uint8x16_t pred_16  = vandq_u8(eq_first, eq_last);
+        const uint8x8_t pred_8    = vbsl_u8(half, vget_low_u8(pred_16), vget_high_u8(pred_16));
+
+        vst1_u8(tmp, pred_8);
+
+        if ((word[0] | word[1]) == 0) {
+            continue;
+        }
+
+        for (int j=0; j < 8; j++) {
+            if (tmp[j] & 0x0f) {
+                if (memcmp(s + i + j + 1, needle_data + 1, k - 2) == 0) {
+                    return i + j;
+                }
+            }
+        }
+
+        for (int j=0; j < 8; j++) {
+            if (tmp[j] & 0xf0) {
+                if (memcmp(s + i + j + 1 + 8, needle_data + 1, k - 2) == 0) {
+                    return i + j + 8;
+                }
+            }
+        }
+    }
+
+    return std::string::npos;
+}
 inline bool simd_search4(std::string_view haystack, std::string_view needle) {
     if (haystack.size() < 4) {
         return false;
