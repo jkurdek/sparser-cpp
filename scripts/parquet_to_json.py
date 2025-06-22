@@ -1,5 +1,27 @@
 import os
+import argparse
 import pyarrow.parquet as pq
+import requests
+import zipfile
+
+
+def download_file(url, output_path):
+    """Download a file from a URL to a specified path."""
+    print(f"Downloading dataset from {url} to {output_path}...")
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    with open(output_path, "wb") as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
+    print("Download complete.")
+
+
+def extract_zip(zip_path, extract_to):
+    """Extract a ZIP file to a specified directory."""
+    print(f"Extracting {zip_path} to {extract_to}...")
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(extract_to)
+    print("Extraction complete.")
 
 
 def convert_parquet_to_json_streaming(
@@ -30,8 +52,42 @@ def convert_parquet_to_json_streaming(
 
 
 if __name__ == "__main__":
-    directory = "samples/wikipedia/"
-    filenames = ["a.parquet", "b.parquet", "c.parquet", "d.parquet"]
-    output_file = "samples/wikipedia.json"
+    parser = argparse.ArgumentParser(
+        description="Download, extract, and convert Parquet files to JSON Lines format."
+    )
+    parser.add_argument(
+        "--download_url", required=True, help="URL to download the dataset."
+    )
+    parser.add_argument(
+        "--download_dir", required=True, help="Directory to save the downloaded file."
+    )
+    parser.add_argument(
+        "--extract_dir", required=True, help="Directory to extract the dataset."
+    )
+    parser.add_argument(
+        "--output_file",
+        required=True,
+        help="Output JSON file (JSON Lines format).",
+    )
+    parser.add_argument(
+        "--include_files",
+        default="",
+        help="Comma-separated list of Parquet files to include in the JSON output.",
+    )
+    args = parser.parse_args()
 
-    convert_parquet_to_json_streaming(directory, filenames, output_file)
+    # Step 1: Download the dataset
+    zip_file_path = os.path.join(args.download_dir, "dataset.zip")
+    # download_file(args.download_url, zip_file_path)
+
+    # # Step 2: Extract the dataset
+    # extract_zip(zip_file_path, args.extract_dir)
+
+    # Step 3: Convert Parquet files to JSON
+    include_files = args.include_files.split(",") if args.include_files else None
+    if include_files:
+        filenames = [f for f in os.listdir(args.extract_dir) if f in include_files]
+    else:
+        filenames = [f for f in os.listdir(args.extract_dir) if f.endswith(".parquet")]
+
+    convert_parquet_to_json_streaming(args.extract_dir, filenames, args.output_file)
